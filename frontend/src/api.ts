@@ -93,6 +93,18 @@ export type NasCheck = {
   ssh_detail: string;
 };
 
+export type Tool = {
+  action_id: string;
+  tool_name: string;
+  category: string;
+  classification: string;
+  description: string;
+  reviewed: boolean;
+  nas: string[];
+};
+
+export type Discovery = { nas: string; found: number; added: number; unreviewed: number };
+
 export type AddressChoice = { address: string; label: string };
 
 export type Network = {
@@ -262,6 +274,14 @@ export const api = {
       request<Nas>(`/api/nas/${id}`, { method: "PATCH", body }),
     remove: (id: number) => request<void>(`/api/nas/${id}`, { method: "DELETE" }),
     check: (id: number) => request<NasCheck>(`/api/nas/${id}/check`, { method: "POST" }),
+  },
+
+  tools: {
+    list: () => request<Tool[]>("/api/tools"),
+    discover: (nasId: number) =>
+      request<Discovery>(`/api/tools/discover/${nasId}`, { method: "POST" }),
+    review: (actionId: string, body: { classification: string; reviewed: boolean }) =>
+      request<Tool>(`/api/tools/${actionId}`, { method: "PATCH", body }),
   },
 
   system: {

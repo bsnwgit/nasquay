@@ -24,6 +24,7 @@ from app.api import nas      as nas_router
 from app.api import roles    as roles_router
 from app.api import settings as settings_router
 from app.api import system   as system_router
+from app.api import tools    as tools_router
 from app.api import users    as users_router
 
 log = logging.getLogger("nasquay")
@@ -69,6 +70,7 @@ app.include_router(nas_router.router,      prefix="/api/nas",      tags=["nas"])
 app.include_router(audit_router.router,    prefix="/api/audit",    tags=["audit"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])
+app.include_router(tools_router.router,    prefix="/api/tools",    tags=["tools"])
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
