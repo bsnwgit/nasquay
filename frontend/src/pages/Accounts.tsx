@@ -191,6 +191,47 @@ export default function Accounts() {
       {!busy && units.length > 0 && (
         <>
           <div className="space-y-2">
+            <h2 className="text-xs uppercase tracking-wide text-zinc-500">Connected now</h2>
+            <div className="card p-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="th">User</th>
+                    <th className="th">From</th>
+                    <th className="th">Resource</th>
+                    <th className="th">Since</th>
+                    <th className="th">Connected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {online.map((session, index) => (
+                    <tr key={`${session.ip}-${session.resource}-${index}`}>
+                      {/* NFS carries no user, and the NAS writes "---" rather than leaving it out. */}
+                      <td className="td text-zinc-300">
+                        {session.user && session.user !== "---" ? session.user : "—"}
+                      </td>
+                      <td className="td text-zinc-400 whitespace-nowrap">{session.ip}</td>
+                      <td className="td text-zinc-400">{session.resource}</td>
+                      <td className="td text-zinc-500 whitespace-nowrap">
+                        {session.date} {session.time}
+                      </td>
+                      <td className="td text-zinc-500 whitespace-nowrap">
+                        {duration(session.survival)}
+                      </td>
+                    </tr>
+                  ))}
+                  {online.length === 0 && (
+                    <tr>
+                      <td className="td text-zinc-500" colSpan={5}>
+                        Nobody is connected.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="space-y-2">
             <h2 className="text-xs uppercase tracking-wide text-zinc-500">
               Users on {nasName}
             </h2>
@@ -302,47 +343,6 @@ export default function Accounts() {
             })}
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">Connected now</h2>
-            <div className="card p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="th">User</th>
-                    <th className="th">From</th>
-                    <th className="th">Resource</th>
-                    <th className="th">Since</th>
-                    <th className="th">Connected</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {online.map((session, index) => (
-                    <tr key={`${session.ip}-${session.resource}-${index}`}>
-                      {/* NFS carries no user, and the NAS writes "---" rather than leaving it out. */}
-                      <td className="td text-zinc-300">
-                        {session.user && session.user !== "---" ? session.user : "—"}
-                      </td>
-                      <td className="td text-zinc-400 whitespace-nowrap">{session.ip}</td>
-                      <td className="td text-zinc-400">{session.resource}</td>
-                      <td className="td text-zinc-500 whitespace-nowrap">
-                        {session.date} {session.time}
-                      </td>
-                      <td className="td text-zinc-500 whitespace-nowrap">
-                        {duration(session.survival)}
-                      </td>
-                    </tr>
-                  ))}
-                  {online.length === 0 && (
-                    <tr>
-                      <td className="td text-zinc-500" colSpan={5}>
-                        Nobody is connected.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
     </div>

@@ -166,6 +166,26 @@ admin. Tokens are powerful and never leave the host.
   mark it rounded. The derived `used_human` is wrong for the same reason.
 - History resolutions: past hour (~10 min), 12 h (~20 min), day (hourly), week (4 h), 30 days
   (daily), year (weekly). Weekly points are not samples of the daily series.
+- **Access log entries are codes, and QNAP publishes no key.** `list_access_logs` returns
+  numeric `service` and `action` where QuLog Center shows words, and no message field, so a
+  warning row explains nothing on its own. The mapping below was derived by exporting QuLog's
+  own CSV and joining it to the same rows read over MCP on date, time, user, address and
+  resource — 2,000 of 2,000 rows matched:
+
+  | `service` | | `action` | |
+  |---|---|---|---|
+  | 1 | SMB | 2 | read |
+  | 8 | NFS | 4 | write |
+  | 64 | SSH/SFTP | 16 | create directory |
+  | 1024 | HTTPS | 256 | login failed |
+  | | | 512 | login |
+  | | | 1024 | logout |
+  | | | 16384 | add |
+
+  A code outside these tables is shown as a number rather than given a plausible label.
+  Note that a failed *public-key* SSH attempt is recorded nowhere — only an attempt that
+  reaches password or keyboard-interactive authentication becomes a `login failed` row, so
+  the absence of an entry is not evidence that nothing was tried.
 - **QNAP `df` wraps long device names**; numbers can be on the following line.
 - **SSH key login** needs QTS home folders enabled and a home that is not group- or
   world-writable.
