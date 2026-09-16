@@ -36,12 +36,12 @@ export default function Login({
             <div className="text-lg font-semibold tracking-wide">
               NAS<span className="text-amber-400">Quay</span>
             </div>
-            <div className="text-xs text-zinc-500">{version}</div>
+            <div className="text-xs text-zinc-300">{version}</div>
           </div>
         </div>
 
         <label className="block space-y-1">
-          <span className="text-xs uppercase tracking-wide text-zinc-400">Username</span>
+          <span className="text-xs uppercase tracking-wide text-zinc-300">Username</span>
           <input
             className="field"
             value={username}
@@ -52,7 +52,7 @@ export default function Login({
         </label>
 
         <label className="block space-y-1">
-          <span className="text-xs uppercase tracking-wide text-zinc-400">Password</span>
+          <span className="text-xs uppercase tracking-wide text-zinc-300">Password</span>
           <input
             className="field"
             type="password"

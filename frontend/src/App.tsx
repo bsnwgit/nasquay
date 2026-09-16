@@ -9,12 +9,13 @@ import Accounts from "./pages/Accounts";
 import Logs from "./pages/Logs";
 import System from "./pages/System";
 import Security from "./pages/Security";
+import Monitoring from "./pages/Monitoring";
 import Audit from "./pages/Audit";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import { LogoMark } from "./components/Logo";
 
-const PAGES = ["Home", "Storage", "Shares", "Files", "Accounts", "Logs", "System", "Security", "Audit", "Settings"] as const;
+const PAGES = ["Home", "Storage", "Shares", "Files", "Accounts", "Logs", "System", "Security", "Monitoring", "Audit", "Settings"] as const;
 type Page = (typeof PAGES)[number];
 
 export default function App() {
@@ -46,7 +47,7 @@ export default function App() {
   };
 
   if (starting) {
-    return <div className="p-8 text-sm text-zinc-500">Loading…</div>;
+    return <div className="p-8 text-sm text-zinc-300">Loading…</div>;
   }
 
   if (!session) {
@@ -66,7 +67,7 @@ export default function App() {
           <span>
             NAS<span className="text-amber-400">Quay</span>
           </span>
-          <span className="text-zinc-500 text-xs font-normal">{version}</span>
+          <span className="text-zinc-300 text-xs font-normal">{version}</span>
         </button>
         <nav className="flex gap-1 flex-wrap">
           {PAGES.map((name) => (
@@ -76,7 +77,7 @@ export default function App() {
               className={
                 name === page
                   ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                  : "px-3 py-1 text-sm border border-transparent text-zinc-400 hover:text-zinc-100"
+                  : "px-3 py-1 text-sm border border-transparent text-zinc-300 hover:text-zinc-100"
               }
             >
               {name}
@@ -89,13 +90,13 @@ export default function App() {
           className={
             accountOpen
               ? "ml-auto px-3 py-1 text-sm border border-amber-500 text-amber-400"
-              : "ml-auto px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+              : "ml-auto px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
           }
           onClick={() => setAccountOpen((open) => !open)}
           title="Your account"
         >
           {session.username}
-          <span className="text-zinc-500"> · {session.role}</span>
+          <span className="text-zinc-300"> · {session.role}</span>
         </button>
       </header>
 
@@ -110,6 +111,7 @@ export default function App() {
         {page === "Logs" && <Logs />}
         {page === "System" && <System />}
         {page === "Security" && <Security />}
+        {page === "Monitoring" && <Monitoring />}
         {page === "Audit" && <Audit />}
         {page === "Settings" && <Settings />}
       </main>

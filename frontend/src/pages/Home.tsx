@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import { LogoMark } from "../components/Logo";
 import { when } from "../utils/format";
+import Help from "../components/Help";
 
 // The landing page. Deliberately cheap: it lists the NAS units NASQuay already knows
 // about and what happened the last time each was checked. Nothing here contacts a NAS,
 // so opening the app does not wake two boxes up.
 
-type Page = "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Audit" | "Settings";
+type Page = "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Monitoring" | "Audit" | "Settings";
 
 const LINKS: { page: Page; label: string; blurb: string }[] = [
   { page: "Storage", label: "Storage", blurb: "Pools, volumes and disks" },
@@ -17,6 +18,7 @@ const LINKS: { page: Page; label: string; blurb: string }[] = [
   { page: "Logs", label: "Logs", blurb: "The NAS's event and access logs" },
   { page: "System", label: "System", blurb: "Firmware, load, temperatures and applications" },
   { page: "Security", label: "Security", blurb: "What the NAS's own security applications report" },
+  { page: "Monitoring", label: "Monitoring", blurb: "What is watched, and what it last showed" },
   { page: "Audit", label: "Audit", blurb: "Every action NASQuay has taken" },
   { page: "Settings", label: "Settings", blurb: "NAS units, users, roles and the app itself" },
 ];
@@ -49,19 +51,26 @@ export default function Home({
           <div className="text-4xl font-semibold tracking-wide">
             NAS<span className="text-amber-400">Quay</span>
           </div>
-          <div className="text-sm text-zinc-400">
-            Welcome back, {username}.{version && <span className="text-zinc-600"> · {version}</span>}
+          <div className="flex items-center gap-2 text-sm text-zinc-300">
+            <span>
+              Welcome back, {username}.{version && <span className="text-zinc-300"> · {version}</span>}
+            </span>
+            <Help>
+              <p>NASQuay operates QNAP NAS units through one permission check and one audit record, whichever way a request arrives — these pages, a scheduled routine or an outside tool.</p>
+              <p>This page contacts no NAS. It lists the units NASQuay knows and what happened the last time each was checked, so opening the app does not wake anything up.</p>
+              <p>Every page carries this blue question mark, explaining what it shows and where its figures come from.</p>
+            </Help>
           </div>
         </div>
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-xs uppercase tracking-wide text-zinc-500">Your NAS units</h2>
+        <h2 className="text-xs uppercase tracking-wide text-zinc-300">Your NAS units</h2>
 
-        {error && <div className="card text-sm text-zinc-500">{error}</div>}
+        {error && <div className="card text-sm text-zinc-300">{error}</div>}
 
         {!error && units.length === 0 && (
-          <div className="card text-sm text-zinc-500">
+          <div className="card text-sm text-zinc-300">
             No NAS units yet. Add one in Settings → NAS.
           </div>
         )}
@@ -80,13 +89,13 @@ export default function Home({
                   }
                 />
                 <span className="text-sm">{nas.name}</span>
-                <span className="text-xs text-zinc-500">
+                <span className="text-xs text-zinc-300">
                   {nas.address}:{nas.mcp_port}
                 </span>
                 {!nas.enabled && <span className="text-xs text-red-400 ml-auto">disabled</span>}
               </div>
 
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-zinc-300">
                 {!nas.has_token && <span className="text-amber-400">No token set · </span>}
                 {nas.last_checked_at ? (
                   <>
@@ -104,7 +113,7 @@ export default function Home({
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-xs uppercase tracking-wide text-zinc-500">Where to go</h2>
+        <h2 className="text-xs uppercase tracking-wide text-zinc-300">Where to go</h2>
         <div className="grid md:grid-cols-2 gap-3">
           {LINKS.map((link) => (
             <button
@@ -113,7 +122,7 @@ export default function Home({
               className="card text-left hover:border-amber-500/60 transition-colors"
             >
               <div className="text-sm text-zinc-100">{link.label}</div>
-              <div className="text-xs text-zinc-500">{link.blurb}</div>
+              <div className="text-xs text-zinc-300">{link.blurb}</div>
             </button>
           ))}
         </div>

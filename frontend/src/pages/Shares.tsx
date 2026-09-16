@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
 import { bytes } from "../utils/format";
+import Help from "../components/Help";
 
 // Shared folders on each NAS. Everything here goes through /api/run, so a role that is
 // not allowed list_shared_folder simply gets a refusal rather than a blank page.
@@ -175,7 +176,13 @@ export default function Shares() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Shares</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Shares</h1>
+        <Help>
+          <p>Every shared folder on the selected NAS. Opening one shows who may reach it and how.</p>
+          <p><span className="text-zinc-200">Permissions</span> are the NAS's access list: each user or group, and whether the permission was set on them directly or inherited from a group.</p>
+          <p><span className="text-zinc-200">NFS export</span> is configured separately from those permissions and does not follow them. An export open to every host is highlighted, because file permissions will not save you there.</p>
+          <p>File and folder counts are the NAS's own cached figures and can be hours stale — Monitoring takes live counts.</p>
+        </Help>
         {units.map((nas) => (
           <button
             key={nas.id}
@@ -183,14 +190,14 @@ export default function Shares() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
           </button>
         ))}
         {meta.total !== undefined && !busy && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-300">
             {meta.total} shares
             {meta.acl_enabled ? " · ACLs on" : ""}
             {meta.has_more ? " · list truncated by the NAS" : ""}
@@ -199,7 +206,7 @@ export default function Shares() {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
 
-      {units.length === 0 && <div className="card text-sm text-zinc-500">No enabled NAS units.</div>}
+      {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
 
       {busy && <Busy label={busy} />}
 
@@ -215,15 +222,15 @@ export default function Shares() {
               className="w-full flex items-center gap-3 text-left"
               onClick={() => openShare(share)}
             >
-              <span className="text-zinc-500 w-3">{expanded ? "▾" : "▸"}</span>
+              <span className="text-zinc-300 w-3">{expanded ? "▾" : "▸"}</span>
               <span className="text-sm">{share.name}</span>
-              {share.comment && <span className="text-xs text-zinc-500">{share.comment}</span>}
-              <span className="text-xs text-zinc-500">
+              {share.comment && <span className="text-xs text-zinc-300">{share.comment}</span>}
+              <span className="text-xs text-zinc-300">
                 volume {share.volumeID ?? "?"}
                 {share.file_count !== undefined && ` · ${share.file_count} files`}
                 {share.dir_count !== undefined && ` · ${share.dir_count} folders`}
               </span>
-              {share.hidden && <span className="text-xs text-zinc-500">hidden</span>}
+              {share.hidden && <span className="text-xs text-zinc-300">hidden</span>}
               {share.worm_type && share.worm_type !== "disabled" && (
                 <span className="text-xs text-amber-400">WORM {share.worm_type}</span>
               )}
@@ -231,7 +238,7 @@ export default function Shares() {
 
             {expanded && (
               <div className="border-t border-zinc-800 pt-3 space-y-3">
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-300">
                   File and folder counts come from the NAS's own cached figures, which lag
                   behind what is really there.
                 </div>
@@ -241,7 +248,7 @@ export default function Shares() {
                 )}
 
                 {detail && (
-                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-400">
+                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-300">
                     {/* These are the volume's figures, not the share's: QNAP returns no
                         per-share size here, and used + free comes to the volume capacity. */}
                     <span>
@@ -255,7 +262,7 @@ export default function Shares() {
                 )}
 
                 {entries && entries.length === 0 && (
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-300">
                     The NAS returned no permission entries for this share.
                   </div>
                 )}
@@ -267,11 +274,11 @@ export default function Shares() {
                         key={`${entry.name ?? index}-${index}`}
                         className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-800/40 last:border-0"
                       >
-                        <span className="text-zinc-300 flex-1 truncate">{entry.name ?? "unknown"}</span>
-                        <span className="text-zinc-600">{entry.principal ?? ""}</span>
+                        <span className="text-zinc-200 flex-1 truncate">{entry.name ?? "unknown"}</span>
+                        <span className="text-zinc-300">{entry.principal ?? ""}</span>
                         <span
                           className={
-                            entry.permission === "NO" ? "text-red-400" : "text-zinc-400"
+                            entry.permission === "NO" ? "text-red-400" : "text-zinc-300"
                           }
                         >
                           {access(entry)}
@@ -284,12 +291,12 @@ export default function Shares() {
                 {exported && (
                   <div className="border-t border-zinc-800/60 pt-2 text-xs">
                     {exported.error ? (
-                      <span className="text-zinc-500">
+                      <span className="text-zinc-300">
                         NFS export not read — {exported.error}
                       </span>
                     ) : exported.info?.enabled ? (
-                      <div className="flex flex-wrap gap-x-6 gap-y-1 text-zinc-400">
-                        <span className="text-zinc-300">
+                      <div className="flex flex-wrap gap-x-6 gap-y-1 text-zinc-300">
+                        <span className="text-zinc-200">
                           NFS {(exported.info.permission ?? "").toUpperCase() || "—"}
                         </span>
                         <span
@@ -312,7 +319,7 @@ export default function Shares() {
                         <span>auth {auth(exported.info)}</span>
                       </div>
                     ) : (
-                      <span className="text-zinc-500">NFS export off</span>
+                      <span className="text-zinc-300">NFS export off</span>
                     )}
                   </div>
                 )}
@@ -323,7 +330,7 @@ export default function Shares() {
       })}
 
       {!busy && !error && units.length > 0 && shares.length === 0 && (
-        <div className="card text-sm text-zinc-500">No shared folders reported.</div>
+        <div className="card text-sm text-zinc-300">No shared folders reported.</div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
 import { duration } from "../utils/format";
+import Help from "../components/Help";
 
 // The accounts held on a NAS — not NASQuay's own, which are under Settings. Three
 // listings load together, each through /api/run, so a role allowed one and refused
@@ -47,7 +48,7 @@ type Online = {
 const tone = (permission?: string) => {
   if (permission === "Deny") return "text-red-400";
   if (permission === "RW") return "text-zinc-100";
-  return "text-zinc-400";
+  return "text-zinc-300";
 };
 
 export default function Accounts() {
@@ -163,7 +164,12 @@ export default function Accounts() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Accounts</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Accounts</h1>
+        <Help>
+          <p>The accounts held on the NAS itself — not NASQuay's own users, which live under Settings.</p>
+          <p><span className="text-zinc-200">Connected now</span> is every open session. NFS carries no user name, so those rows show a dash: an NFS client is trusted by address, not by login.</p>
+          <p>Opening a user shows their effective permission on every share, and whether it came from the user or from a group. Opening a group shows its members.</p>
+        </Help>
         {units.map((nas) => (
           <button
             key={nas.id}
@@ -171,7 +177,7 @@ export default function Accounts() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -180,10 +186,10 @@ export default function Accounts() {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
 
-      {units.length === 0 && <div className="card text-sm text-zinc-500">No enabled NAS units.</div>}
+      {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
 
       {problems.length > 0 && !busy && (
-        <div className="card text-xs text-zinc-500">Not shown — {problems.join(" · ")}</div>
+        <div className="card text-xs text-zinc-300">Not shown — {problems.join(" · ")}</div>
       )}
 
       {busy && <Busy label={busy} />}
@@ -191,7 +197,7 @@ export default function Accounts() {
       {!busy && units.length > 0 && (
         <>
           <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">Connected now</h2>
+            <h2 className="text-xs uppercase tracking-wide text-zinc-300">Connected now</h2>
             <div className="card p-0">
               <table className="w-full text-sm">
                 <thead>
@@ -207,22 +213,22 @@ export default function Accounts() {
                   {online.map((session, index) => (
                     <tr key={`${session.ip}-${session.resource}-${index}`}>
                       {/* NFS carries no user, and the NAS writes "---" rather than leaving it out. */}
-                      <td className="td text-zinc-300">
+                      <td className="td text-zinc-200">
                         {session.user && session.user !== "---" ? session.user : "—"}
                       </td>
-                      <td className="td text-zinc-400 whitespace-nowrap">{session.ip}</td>
-                      <td className="td text-zinc-400">{session.resource}</td>
-                      <td className="td text-zinc-500 whitespace-nowrap">
+                      <td className="td text-zinc-300 whitespace-nowrap">{session.ip}</td>
+                      <td className="td text-zinc-300">{session.resource}</td>
+                      <td className="td text-zinc-300 whitespace-nowrap">
                         {session.date} {session.time}
                       </td>
-                      <td className="td text-zinc-500 whitespace-nowrap">
+                      <td className="td text-zinc-300 whitespace-nowrap">
                         {duration(session.survival)}
                       </td>
                     </tr>
                   ))}
                   {online.length === 0 && (
                     <tr>
-                      <td className="td text-zinc-500" colSpan={5}>
+                      <td className="td text-zinc-300" colSpan={5}>
                         Nobody is connected.
                       </td>
                     </tr>
@@ -232,7 +238,7 @@ export default function Accounts() {
             </div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">
+            <h2 className="text-xs uppercase tracking-wide text-zinc-300">
               Users on {nasName}
             </h2>
             {accounts.map((account) => {
@@ -245,9 +251,9 @@ export default function Accounts() {
                     className="w-full flex items-center gap-3 text-left"
                     onClick={() => showAccount(name)}
                   >
-                    <span className="text-zinc-500 w-3">{expanded ? "▾" : "▸"}</span>
+                    <span className="text-zinc-300 w-3">{expanded ? "▾" : "▸"}</span>
                     <span className="text-sm">{name}</span>
-                    <span className="text-xs text-zinc-500">uid {account.uid}</span>
+                    <span className="text-xs text-zinc-300">uid {account.uid}</span>
                     {account.is_admin && <span className="text-xs text-amber-400">administrator</span>}
                     {!account.enabled && <span className="text-xs text-red-400">disabled</span>}
                   </button>
@@ -260,7 +266,7 @@ export default function Accounts() {
 
                       {detail && (
                         <>
-                          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-400">
+                          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-300">
                             {detail.email && <span>{detail.email}</span>}
                             {detail.description && <span>{detail.description}</span>}
                             <span>groups {detail.groups?.join(", ") || "none"}</span>
@@ -278,12 +284,12 @@ export default function Accounts() {
                             <tbody>
                               {(detail.sharedfolder_settings ?? []).map((row) => (
                                 <tr key={row.name}>
-                                  <td className="td text-zinc-300">{row.name}</td>
+                                  <td className="td text-zinc-200">{row.name}</td>
                                   <td className={`td ${tone(row.effective_permission)}`}>
                                     {row.effective_permission}
                                   </td>
-                                  <td className="td text-zinc-500">{row.user_permission}</td>
-                                  <td className="td text-zinc-500">{row.group_permission}</td>
+                                  <td className="td text-zinc-300">{row.user_permission}</td>
+                                  <td className="td text-zinc-300">{row.group_permission}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -298,7 +304,7 @@ export default function Accounts() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">Groups</h2>
+            <h2 className="text-xs uppercase tracking-wide text-zinc-300">Groups</h2>
             {groups.map((group) => {
               const name = group.name ?? "";
               const expanded = openGroup === name;
@@ -309,11 +315,11 @@ export default function Accounts() {
                     className="w-full flex items-center gap-3 text-left"
                     onClick={() => showGroup(name)}
                   >
-                    <span className="text-zinc-500 w-3">{expanded ? "▾" : "▸"}</span>
+                    <span className="text-zinc-300 w-3">{expanded ? "▾" : "▸"}</span>
                     <span className="text-sm">{name}</span>
-                    <span className="text-xs text-zinc-500">gid {group.id}</span>
+                    <span className="text-xs text-zinc-300">gid {group.id}</span>
                     {group.description && (
-                      <span className="text-xs text-zinc-500">{group.description}</span>
+                      <span className="text-xs text-zinc-300">{group.description}</span>
                     )}
                   </button>
 
@@ -323,12 +329,12 @@ export default function Accounts() {
 
                       {detail && (
                         <>
-                          <div className="text-xs text-zinc-400">
+                          <div className="text-xs text-zinc-300">
                             members {detail.users?.join(", ") || "none"}
                           </div>
                           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
                             {(detail.sharedfolders ?? []).map((share) => (
-                              <span key={share.name} className="text-zinc-400">
+                              <span key={share.name} className="text-zinc-300">
                                 {share.name}{" "}
                                 <span className={tone(share.permission)}>{share.permission}</span>
                               </span>
