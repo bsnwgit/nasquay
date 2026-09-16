@@ -28,6 +28,9 @@ from app.connectors import qnap_mcp, ssh
 FAST = "fast"
 # Slow: `du` and a live `find` walk a whole share, which takes minutes on a large one.
 SLOW = "slow"
+# Client: one SSH call per mount to a machine that is not the NAS. Cheap, and asking
+# whether a share is still mounted is worth doing more often than asking about free space.
+CLIENT = "client"
 
 
 @dataclass
@@ -111,6 +114,22 @@ def discover(mcp: qnap_mcp.Target) -> tuple[list[Found], list[str]]:
 # ── collection ────────────────────────────────────────────────────────────────
 
 @dataclass
+class ClientTarget:
+    """A machine that mounts a share, reached the same way a NAS is.
+
+    The key is carried per client, not taken from the install: a client may be given its
+    own, and using the wrong one fails in a way that looks exactly like the machine being
+    unreachable.
+    """
+
+    name: str
+    address: str
+    user: str
+    port: int = 22
+    key_path: str = ""
+
+
+@dataclass
 class Watched:
     """One row of `targets`, with what the collector needs to reach it."""
 
@@ -119,6 +138,8 @@ class Watched:
     ref: str
     label: str = ""
     parent_ref: str = ""
+    # For a client mount: where to ask, and as whom.
+    client: Optional["ClientTarget"] = None
     # For a volume: a share that lives on it, so `df` has a path to resolve.
     via_share: str = ""
 
@@ -128,6 +149,7 @@ def collect(
     sshing: Optional[ssh.Target],
     watched: list[Watched],
     tier: str,
+    key_path: str = "",
 ) -> Outcome:
     """One tier's readings for one NAS."""
     outcome = Outcome()
@@ -153,6 +175,33 @@ def collect(
                 Reading(volume.id, "df_available_bytes", figures["available_bytes"], "ssh"),
             ]
 
+    if tier == CLIENT:
+        for mount in (w for w in watched if w.kind == "client_mount"):
+            if mount.client is None:
+                outcome.problems.append(f"client {mount.ref}: no client is set for this mount")
+                continue
+            target = ssh.Target(
+                address=mount.client.address, user=mount.client.user,
+                port=mount.client.port, key_path=mount.client.key_path or key_path,
+            )
+            try:
+                view = ssh.client_view(target, mount.ref)
+            except ssh.SshError as exc:
+                outcome.note(f"client {mount.client.name} {mount.ref}", exc)
+                continue
+            outcome.readings.append(
+                Reading(mount.id, "client_mounted", view["mounted"], "client")
+            )
+            # A path that is not mounted reports the filesystem underneath it, so its
+            # sizes say nothing about the share and are not recorded.
+            if view["mounted"]:
+                outcome.readings += [
+                    Reading(mount.id, "client_df_total_bytes", view["total_bytes"], "client"),
+                    Reading(mount.id, "client_df_used_bytes", view["used_bytes"], "client"),
+                    Reading(mount.id, "client_df_available_bytes", view["available_bytes"],
+                            "client"),
+                ]
+
     if tier == SLOW and mcp is not None and shares:
         _slow_mcp(mcp, shares, outcome)
 
@@ -161,18 +210,34 @@ def collect(
             path = f"/share/{share.ref}"
             try:
                 counts = ssh.file_count(sshing, path)
+                # A count that skipped directories is short by an unknown amount, so it is
+                # marked as having lost accuracy — no rule may compare it against another.
+                partial = counts["unreadable"] > 0
                 outcome.readings += [
-                    Reading(share.id, "file_count", counts["files"], "ssh"),
+                    Reading(share.id, "file_count", counts["files"], "ssh", rounded=partial),
                     Reading(share.id, "file_count_excluding_housekeeping",
-                            counts["files_excluding_housekeeping"], "ssh"),
-                    Reading(share.id, "dir_count", counts["directories"], "ssh"),
+                            counts["files_excluding_housekeeping"], "ssh", rounded=partial),
+                    Reading(share.id, "dir_count", counts["directories"], "ssh", rounded=partial),
+                    Reading(share.id, "unreadable_paths", counts["unreadable"], "ssh"),
                 ]
+                if partial:
+                    outcome.problems.append(
+                        f"{share.ref}: {counts['unreadable']} paths could not be read, "
+                        f"so its counts are short"
+                    )
             except ssh.SshError as exc:
                 outcome.note(f"file count for {share.ref}", exc)
             try:
+                measured = ssh.du_bytes(sshing, path)
                 outcome.readings.append(
-                    Reading(share.id, "du_bytes", ssh.du_bytes(sshing, path), "ssh")
+                    Reading(share.id, "du_bytes", measured["bytes"], "ssh",
+                            rounded=measured["unreadable"] > 0)
                 )
+                if measured["unreadable"]:
+                    outcome.problems.append(
+                        f"{share.ref}: du could not read {measured['unreadable']} paths, "
+                        f"so its size is short"
+                    )
             except ssh.SshError as exc:
                 outcome.note(f"du for {share.ref}", exc)
 

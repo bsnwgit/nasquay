@@ -136,7 +136,7 @@ export default function Files() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}

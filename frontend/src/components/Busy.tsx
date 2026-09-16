@@ -4,7 +4,7 @@ export default function Busy({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-16">
       <div
-        className="h-16 w-16 rounded-full border-4 border-zinc-700 border-t-amber-400 animate-spin"
+        className="h-16 w-16 rounded-full border-4 border-zinc-600 border-t-amber-400 animate-spin"
         role="status"
         aria-label={label}
       />

@@ -174,7 +174,7 @@ export default function System() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -321,7 +321,7 @@ export default function System() {
               {(apps.apps ?? []).map((app) => (
                 <div
                   key={app.internalName}
-                  className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-800/40"
+                  className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-600/40"
                 >
                   <span className={app.enabled ? "text-zinc-200 flex-1" : "text-zinc-300 flex-1"}>
                     {app.displayName}

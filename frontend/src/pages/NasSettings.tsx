@@ -242,7 +242,7 @@ export default function NasSettings() {
             </button>
 
             {expanded && (
-              <div className="space-y-4 border-t border-zinc-800 pt-3">
+              <div className="space-y-4 border-t border-zinc-600 pt-3">
                 <div className="flex gap-2 flex-wrap">
                   <button className="btn" onClick={() => check(nas)}>Test connection</button>
                   <button className="btn" disabled={busy} onClick={() => discover(nas)}>
@@ -420,13 +420,13 @@ export default function NasSettings() {
                             <div
                               key={tool.action_id}
                               title={tool.description || "No description given"}
-                              className="flex items-center gap-2 py-0.5 border-b border-zinc-800/40 last:border-0"
+                              className="flex items-center gap-2 py-0.5 border-b border-zinc-600/40 last:border-0"
                             >
                               <span className="font-mono text-xs text-zinc-200 flex-1 truncate">
                                 {tool.tool_name}
                               </span>
                               <select
-                                className="bg-zinc-900 border border-zinc-700 text-xs px-1 py-0.5 text-zinc-200 focus:outline-none focus:border-amber-500"
+                                className="bg-zinc-900 border border-zinc-600 text-xs px-1 py-0.5 text-zinc-200 focus:outline-none focus:border-amber-500"
                                 value={tool.classification}
                                 onChange={(e) => review(tool, e.target.value, tool.reviewed)}
                               >

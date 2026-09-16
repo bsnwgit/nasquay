@@ -16,6 +16,9 @@ from typing import Optional
 
 # A share or volume path on a QNAP: /share/<something>/<something>...
 _PATH = re.compile(r"^/share/[A-Za-z0-9._@+-]+(?:/[A-Za-z0-9 ._@+-]+)*$")
+# A mount point on a client machine, which is not a NAS and has no /share. Still an
+# absolute path of ordinary characters only, and never one that climbs out of itself.
+_MOUNT = re.compile(r"^/[A-Za-z0-9 ._@+()-]+(?:/[A-Za-z0-9 ._@+()-]+)*$")
 
 DEFAULT_TIMEOUT = 60
 
@@ -31,6 +34,13 @@ class Target:
     port: int = 22
     key_path: str = ""
     timeout: int = DEFAULT_TIMEOUT
+
+
+def check_mount_path(path: str) -> str:
+    """A client mount point, or an error."""
+    if not _MOUNT.match(path or "") or ".." in path:
+        raise SshError(f"Not a mount path: {path!r}")
+    return path
 
 
 def check_path(path: str) -> str:
@@ -93,34 +103,125 @@ def df_kib(target: Target, path: str) -> dict[str, int]:
     }
 
 
-def du_bytes(target: Target, path: str, timeout: int = 3600) -> int:
-    """The real size of a share. Slow on a large share — always run as a job."""
-    out = _run(target, f"du -sk {shlex.quote(check_path(path))}", timeout=timeout)
-    first = out.split()
-    if not first or not first[0].isdigit():
+def du_bytes(target: Target, path: str, timeout: int = 3600) -> dict[str, int]:
+    """The real size of a share, and how many paths it could not read.
+
+    The trailing slash matters: QNAP's /share/<name> is a symlink onto the volume, and
+    `du` does not follow one — without it this returns the size of the link, which is
+    zero. The unreadable count matters just as much: a share with directories this
+    account cannot enter returns a total that is short by an unknown amount, and a
+    silently short total would look exactly like data disappearing.
+    """
+    out = _run(
+        target,
+        f"du -sk {shlex.quote(check_path(path))}/ 2>&1 | "
+        f"awk '$1 ~ /^[0-9]+$/ {{ v = $1; next }} {{ e++ }} END {{ print v + 0; print e + 0 }}'",
+        timeout=timeout,
+    )
+    numbers = [int(line.strip()) for line in out.splitlines() if line.strip().lstrip("-").isdigit()]
+    if len(numbers) < 2:
         raise SshError("Could not read du output from the NAS")
-    return int(first[0]) * 1024
+    return {"bytes": numbers[0] * 1024, "unreadable": numbers[1]}
 
 
 def file_count(target: Target, path: str, timeout: int = 3600) -> dict[str, int]:
-    """Live file and directory counts, with and without QNAP's own housekeeping trees."""
+    """Live file and directory counts, with and without QNAP's own housekeeping trees.
+
+    One walk for files, one for directories, and the same trailing slash as `du` for the
+    same reason. Anything `find` could not enter is counted rather than discarded.
+    """
     quoted = shlex.quote(check_path(path))
     out = _run(
         target,
-        f"find {quoted} -type f | wc -l; "
-        f"find {quoted} -type f | grep -cE '/(@Recycle|\\.@__thumb)/'; "
-        f"find {quoted} -mindepth 1 -type d | wc -l",
+        f"find {quoted}/ -type f 2>&1 | "
+        f"awk '/^find: /{{ e++; next }} /\\/(@Recycle|\\.@__thumb)\\//{{ h++ }} "
+        f"{{ f++ }} END {{ print f + 0; print h + 0; print e + 0 }}'; "
+        f"find {quoted}/ -mindepth 1 -type d 2>/dev/null | wc -l",
         timeout=timeout,
     )
     numbers = [int(line.strip()) for line in out.splitlines() if line.strip().isdigit()]
-    if len(numbers) < 3:
+    if len(numbers) < 4:
         raise SshError("Could not read the file counts from the NAS")
-    files, housekeeping, directories = numbers[0], numbers[1], numbers[2]
+    files, housekeeping, unreadable, directories = numbers[0], numbers[1], numbers[2], numbers[3]
     return {
         "files": files,
         "files_excluding_housekeeping": files - housekeeping,
         "directories": directories,
+        "unreadable": unreadable,
     }
+
+
+def client_view(target: Target, path: str) -> dict[str, int]:
+    """What a client machine sees at a mount point.
+
+    `mount` is consulted rather than trusting `df` alone: on both macOS and Linux, `df` of
+    a path that is not mounted quietly answers about the filesystem underneath it, so a
+    share that has dropped would report the client's own disk and look healthy.
+    """
+    quoted = shlex.quote(check_mount_path(path))
+    out = _run(
+        target,
+        f"mount | grep -c -F ' on {check_mount_path(path)} '; df -k {quoted} 2>/dev/null | tail -1",
+    )
+    lines = [line for line in out.splitlines() if line.strip()]
+    if not lines:
+        raise SshError("The client returned nothing")
+    try:
+        mounted = int(lines[0].strip())
+    except ValueError as exc:
+        raise SshError("Could not tell whether the path is mounted") from exc
+
+    numbers: list[int] = []
+    for line in lines[1:]:
+        for field in line.split():
+            if field.isdigit():
+                numbers.append(int(field))
+    if len(numbers) < 3:
+        return {"mounted": 1 if mounted else 0, "total_bytes": 0, "used_bytes": 0,
+                "available_bytes": 0}
+    return {
+        "mounted": 1 if mounted else 0,
+        "total_bytes": numbers[0] * 1024,
+        "used_bytes": numbers[1] * 1024,
+        "available_bytes": numbers[2] * 1024,
+    }
+
+
+# What counts as a mount worth offering: a filesystem that came from somewhere else.
+NETWORK_FILESYSTEMS = ("nfs", "nfs4", "smbfs", "cifs", "afpfs", "webdav", "fuse.sshfs")
+
+
+def list_mounts(target: Target) -> list[dict[str, str]]:
+    """Every network filesystem currently mounted on a client.
+
+    `mount` is parsed rather than /proc/mounts because this has to work on macOS as well as
+    Linux, and the two formats differ:
+
+        Linux   device on /path type nfs4 (rw,...)
+        macOS   device on /path (nfs, rw, ...)
+
+    Both put the path between " on " and either " type " or " (", which is the only part
+    of the line this needs to be sure about.
+    """
+    out = _run(target, "mount")
+    found: list[dict[str, str]] = []
+    for line in out.splitlines():
+        if " on " not in line:
+            continue
+        source, rest = line.split(" on ", 1)
+        if " type " in rest:
+            path, tail = rest.split(" type ", 1)
+            kind = tail.split(" ", 1)[0].split("(", 1)[0].strip()
+        elif " (" in rest:
+            path, tail = rest.rsplit(" (", 1)
+            kind = tail.split(",", 1)[0].strip(") ").strip()
+        else:
+            continue
+        kind = kind.strip().lower()
+        if kind not in NETWORK_FILESYSTEMS:
+            continue
+        found.append({"source": source.strip(), "path": path.strip(), "type": kind})
+    return found
 
 
 def check(target: Target) -> str:

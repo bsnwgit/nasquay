@@ -24,6 +24,41 @@ export const duration = (seconds?: number) => {
   return `${minutes}m`;
 };
 
-// QNAP and NASQuay both hand back ISO timestamps; nobody needs the T or the offset.
-export const when = (value?: string | null) =>
+// The zone every NASQuay time is shown in, set once from /api/health. Held here rather
+// than passed through every page, because a timestamp is formatted in a dozen places and
+// one of them would have been missed.
+let zone = "UTC";
+
+export const setTimezone = (name: string) => {
+  zone = name || "UTC";
+};
+
+export const timezone = () => zone;
+
+// A time NASQuay itself recorded. Stored in UTC — SQLite's datetime('now') is UTC — and
+// shown in the configured zone.
+export const when = (value?: string | null) => {
+  if (!value) return "";
+  const text = value.includes("T") ? value : value.replace(" ", "T");
+  // A stored time carries no offset, so it is stamped as UTC before conversion.
+  const stamped = /[Z+]|-\d\d:\d\d$/.test(text) ? text : `${text}Z`;
+  const moment = new Date(stamped);
+  if (Number.isNaN(moment.getTime())) return value.replace("T", " ").slice(0, 19);
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: zone,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
+    })
+      .format(moment)
+      .replace(",", "");
+  } catch {
+    return value.replace("T", " ").slice(0, 19);
+  }
+};
+
+// A time a NAS reported. It is that NAS's own local clock, so it is shown exactly as
+// given — converting it would claim a zone the NAS never stated.
+export const asGiven = (value?: string | null) =>
   value ? value.replace("T", " ").slice(0, 19) : "";

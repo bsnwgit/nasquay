@@ -177,7 +177,7 @@ export default function Accounts() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -259,7 +259,7 @@ export default function Accounts() {
                   </button>
 
                   {expanded && (
-                    <div className="border-t border-zinc-800 pt-3 space-y-3">
+                    <div className="border-t border-zinc-600 pt-3 space-y-3">
                       {detail === undefined && (
                         <Busy label={`Reading ${name}'s access on ${nasName}`} />
                       )}
@@ -324,7 +324,7 @@ export default function Accounts() {
                   </button>
 
                   {expanded && (
-                    <div className="border-t border-zinc-800 pt-3 space-y-2">
+                    <div className="border-t border-zinc-600 pt-3 space-y-2">
                       {detail === undefined && <Busy label={`Reading ${name} on ${nasName}`} />}
 
                       {detail && (

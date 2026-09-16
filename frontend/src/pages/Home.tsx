@@ -8,17 +8,19 @@ import Help from "../components/Help";
 // about and what happened the last time each was checked. Nothing here contacts a NAS,
 // so opening the app does not wake two boxes up.
 
-type Page = "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Monitoring" | "Audit" | "Settings";
+type Page = "Dashboard" | "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Monitoring" | "Audit" | "Settings";
 
 const LINKS: { page: Page; label: string; blurb: string }[] = [
-  { page: "Storage", label: "Storage", blurb: "Pools, volumes and disks" },
+  { page: "Dashboard", label: "Dashboard", blurb: "Whether anything is wrong, on one screen" },
+  { page: "Storage", label: "Pools", blurb: "Pools, volumes and disks" },
   { page: "Shares", label: "Shares", blurb: "Shared folders, permissions and NFS exports" },
   { page: "Files", label: "Files", blurb: "Browse what is actually on a share" },
   { page: "Accounts", label: "Accounts", blurb: "The NAS's own users, groups and sessions" },
   { page: "Logs", label: "Logs", blurb: "The NAS's event and access logs" },
   { page: "System", label: "System", blurb: "Firmware, load, temperatures and applications" },
   { page: "Security", label: "Security", blurb: "What the NAS's own security applications report" },
-  { page: "Monitoring", label: "Monitoring", blurb: "What is watched, and what it last showed" },
+  { page: "Monitoring", label: "NAS monitoring", blurb: "What is watched on each NAS, and what it last showed" },
+  { page: "ClientMonitoring", label: "Client mounts", blurb: "Whether the machines that mount a share still have it" },
   { page: "Audit", label: "Audit", blurb: "Every action NASQuay has taken" },
   { page: "Settings", label: "Settings", blurb: "NAS units, users, roles and the app itself" },
 ];

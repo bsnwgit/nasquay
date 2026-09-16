@@ -10,11 +10,11 @@
 
 @layer components {
   .field {
-    @apply w-full bg-zinc-900 border border-zinc-700 px-2 py-1 text-sm text-zinc-100
+    @apply w-full bg-zinc-900 border border-zinc-600 px-2 py-1 text-sm text-zinc-100
            focus:outline-none focus:border-amber-500;
   }
   .btn {
-    @apply px-3 py-1 text-sm border border-zinc-700 bg-zinc-900 hover:bg-zinc-800
+    @apply px-3 py-1 text-sm border border-zinc-600 bg-zinc-900 hover:bg-zinc-800
            disabled:opacity-40 disabled:hover:bg-zinc-900;
   }
   .btn-primary {
@@ -27,6 +27,11 @@
     @apply px-3 py-1 text-sm border border-amber-500 text-amber-400 bg-amber-500/10
            disabled:opacity-100;
   }
+  /* The read that last ran — marked, but plainly not the one working now. */
+  .btn-last {
+    @apply px-3 py-1 text-sm border border-amber-500 text-amber-400 bg-zinc-900
+           hover:bg-zinc-800;
+  }
   .btn-on {
     @apply px-3 py-1 text-sm border border-emerald-600 text-emerald-400 hover:bg-emerald-950;
   }
@@ -34,16 +39,18 @@
     @apply px-3 py-1 text-sm border border-red-700 text-red-400 hover:bg-red-950;
   }
   .btn-danger {
-    @apply px-3 py-1 text-sm border border-red-800 text-red-300 hover:bg-red-950;
+    @apply px-3 py-1 text-sm border border-red-800 text-red-300 hover:bg-red-950
+           disabled:opacity-40 disabled:border-zinc-600 disabled:text-zinc-400
+           disabled:hover:bg-transparent disabled:cursor-not-allowed;
   }
   .card {
-    @apply border border-zinc-800 bg-zinc-900/40 p-4;
+    @apply border border-zinc-600 bg-zinc-900/40 p-4;
   }
   .th {
     @apply text-left text-xs uppercase tracking-wide text-zinc-300 font-medium px-2 py-2
-           border-b border-zinc-800;
+           border-b border-zinc-600;
   }
   .td {
-    @apply px-2 py-2 border-b border-zinc-800/60 align-top;
+    @apply px-2 py-2 border-b border-zinc-600/60 align-top;
   }
 }

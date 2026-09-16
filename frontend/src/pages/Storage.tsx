@@ -111,7 +111,7 @@ export default function Storage() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -232,7 +232,7 @@ export default function Storage() {
                   return (
                     <div
                       key={`${disk.disk_no}-${index}`}
-                      className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-800/40 last:border-0"
+                      className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-600/40 last:border-0"
                     >
                       <span className={unreadable ? "text-red-400 flex-1 truncate" : "text-zinc-200 flex-1 truncate"}>
                         {disk.pd_alias || disk.disk_no || "slot"}

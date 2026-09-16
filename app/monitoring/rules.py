@@ -32,6 +32,9 @@ FILE_COUNT_DROP = "file_count_drop"
 DF_VS_DU = "df_vs_du"
 MCP_VS_DF = "mcp_vs_df"
 POOL_STATUS_CHANGE = "pool_status_change"
+MOUNT_MISSING = "mount_missing"
+CLIENT_VS_NAS = "client_vs_nas"
+COLLECTION_STALE = "collection_stale"
 
 
 @dataclass
@@ -48,24 +51,30 @@ class Raised:
 async def _series(
     db: aiosqlite.Connection, target_id: int, metric: str, limit: int = 2, *, exact: bool = True
 ) -> list[aiosqlite.Row]:
-    """Recent readings of one metric, newest first.
+    """The newest readings of one metric, newest first.
 
-    `exact` excludes anything rounded, cached or backfilled — the default, because most
-    rules compare magnitudes where three significant digits would invent a change.
+    `exact` does NOT mean "the newest readings that happen to be exact" — that would walk
+    back past a degraded reading to an older clean one and compare across the gap, which
+    is how a stale zero came to be compared against today's df. It means: take the newest
+    readings, and if any of them lost accuracy, answer nothing at all. A rule that cannot
+    be evaluated says nothing.
     """
-    clause = "AND rounded = 0 AND cached = 0 AND backfilled = 0" if exact else ""
     async with db.execute(
-        f"""SELECT value, taken_at FROM readings
-            WHERE target_id = ? AND metric = ? AND value IS NOT NULL {clause}
-            ORDER BY taken_at DESC, id DESC LIMIT ?""",
+        """SELECT value, taken_at, rounded, cached, backfilled FROM readings
+           WHERE target_id = ? AND metric = ? AND value IS NOT NULL
+           ORDER BY taken_at DESC, id DESC LIMIT ?""",
         (target_id, metric, limit),
     ) as cur:
-        return list(await cur.fetchall())
+        rows = list(await cur.fetchall())
+    if exact and any(r["rounded"] or r["cached"] or r["backfilled"] for r in rows):
+        return []
+    return rows
 
 
 async def _latest(
     db: aiosqlite.Connection, target_id: int, metric: str, *, exact: bool = True
 ) -> Optional[aiosqlite.Row]:
+    """The newest reading of one metric, or nothing if it is not fit to compare."""
     rows = await _series(db, target_id, metric, 1, exact=exact)
     return rows[0] if rows else None
 
@@ -90,6 +99,8 @@ async def evaluate(db: aiosqlite.Connection, nas_id: int, settings: dict[str, An
             raised += await _share_rules(db, target, nas_id, settings)
         elif target["kind"] == "pool":
             raised += await _pool_rules(db, target, nas_id)
+        elif target["kind"] == "client_mount":
+            raised += await _mount_rules(db, target, targets, nas_id, settings)
 
     raised += await _df_vs_du(db, targets, nas_id, settings)
     return raised
@@ -174,17 +185,113 @@ async def _pool_rules(db, target, nas_id: int) -> list[Raised]:
     return []
 
 
+async def _mount_rules(db, target, targets, nas_id: int, settings) -> list[Raised]:
+    """What a client sees, against what the NAS says.
+
+    A client's view is the one that matters to whoever uses it: a share can be perfectly
+    healthy on the NAS and simply not be mounted on the machine that needs it. That has
+    already happened here, and nothing on the NAS side would have shown it.
+    """
+    out: list[Raised] = []
+
+    mounted = await _latest(db, target["id"], "client_mounted")
+    if mounted is not None and not mounted["value"]:
+        return [Raised(
+            MOUNT_MISSING, target["id"], nas_id, "error",
+            f"{target['label'] or target['ref']} is not mounted on the client",
+            0, 1,
+        )]
+    if mounted is None or not mounted["value"]:
+        # Never read, or not mounted and already reported above.
+        return out
+
+    # client_vs_nas — the client's idea of the filesystem against the NAS's own df. Both
+    # measure the same thing from opposite ends, so they should agree closely.
+    client_used = await _latest(db, target["id"], "client_df_used_bytes")
+    if client_used is None or not client_used["value"]:
+        return out
+
+    volume = None
+    for candidate in targets:
+        if candidate["kind"] != "volume":
+            continue
+        for share in targets:
+            if (share["kind"] == "share" and share["ref"] == target["parent_ref"]
+                    and share["parent_ref"] == candidate["ref"]):
+                volume = candidate
+                break
+        if volume is not None:
+            break
+    if volume is None:
+        return out
+
+    nas_used = await _latest(db, volume["id"], "df_used_bytes")
+    if nas_used is None or not nas_used["value"]:
+        return out
+
+    margin = float(settings.get("rule_divergence_pct", 2))
+    apart = _percent(client_used["value"], nas_used["value"])
+    if apart >= margin:
+        out.append(Raised(
+            CLIENT_VS_NAS, target["id"], nas_id, "warning",
+            f"the client sees {client_used['value']:,} bytes used where the NAS says "
+            f"{nas_used['value']:,} — {apart:.1f}% apart",
+            client_used["value"], nas_used["value"],
+        ))
+    return out
+
+
+async def collection_stale(db: aiosqlite.Connection, settings: dict[str, Any]) -> list[Raised]:
+    """Has collection itself stopped?
+
+    Only asked when the schedule is meant to be running: with it off, nothing collecting is
+    the correct state, not a fault. The window is twice the interval, so one slow or missed
+    pass is not an alarm.
+    """
+    if not settings.get("monitoring_enabled"):
+        return []
+    minutes = int(settings.get("monitoring_fast_minutes", 10)) * 2
+    async with db.execute(
+        """SELECT started_at FROM collection_runs
+           WHERE tier = 'fast' AND status IN ('ok', 'partial')
+           ORDER BY started_at DESC LIMIT 1"""
+    ) as cur:
+        row = await cur.fetchone()
+    if row is None:
+        return [Raised(COLLECTION_STALE, None, None, "warning",
+                       "the schedule is on but no collection has completed yet")]
+    async with db.execute(
+        "SELECT datetime(?, ?) < datetime('now') AS late", (row["started_at"], f"+{minutes} minutes")
+    ) as cur:
+        answer = await cur.fetchone()
+    if answer["late"]:
+        return [Raised(COLLECTION_STALE, None, None, "error",
+                       f"no collection has completed since {row['started_at']} UTC, "
+                       f"which is more than twice the interval")]
+    return []
+
+
 async def _df_vs_du(db, targets, nas_id: int, settings) -> list[Raised]:
     """The sum of a volume's shares against what df says that volume holds.
 
-    Only evaluated when every share on the volume has a `du` figure — a partial sum would
-    always look smaller than df and would flag for no reason.
+    Only evaluated when every share the NAS reports on that volume is watched and has an
+    exact `du` figure. A sum missing a share — or one whose `du` could not read part of
+    the tree — is always smaller than df, and would flag for ever while meaning nothing.
     """
     out: list[Raised] = []
     margin = float(settings.get("rule_divergence_pct", 2))
     for volume in (t for t in targets if t["kind"] == "volume"):
         shares = [t for t in targets if t["kind"] == "share" and t["parent_ref"] == volume["ref"]]
         if not shares:
+            continue
+        # Any share on this volume that is not watched makes the sum meaningless.
+        async with db.execute(
+            """SELECT COUNT(*) AS n FROM targets
+               WHERE nas_id = ? AND kind = 'share' AND parent_ref = ? AND enabled = 0""",
+            (nas_id, volume["ref"]),
+        ) as cur:
+            unwatched = (await cur.fetchone())["n"]
+        if unwatched:
             continue
         total = 0
         for share in shares:
@@ -252,3 +359,36 @@ async def apply(db: aiosqlite.Connection, nas_id: int, raised: list[Raised]) -> 
 
     await db.commit()
     return {"raised": opened, "cleared": cleared, "firing": len(raised)}
+
+
+async def apply_global(db: aiosqlite.Connection, raised: list[Raised]) -> dict[str, int]:
+    """The same as apply(), for rules that belong to no single NAS."""
+    firing = {one.rule for one in raised}
+    opened = 0
+    for one in raised:
+        async with db.execute(
+            "SELECT id FROM flags WHERE rule = ? AND nas_id IS NULL AND cleared_at IS NULL",
+            (one.rule,),
+        ) as cur:
+            if await cur.fetchone() is not None:
+                continue
+        await db.execute(
+            """INSERT INTO flags (rule, target_id, nas_id, severity, detail, value, previous)
+               VALUES (?, NULL, NULL, ?, ?, ?, ?)""",
+            (one.rule, one.severity, one.detail, one.value, one.previous),
+        )
+        opened += 1
+
+    async with db.execute(
+        "SELECT id, rule FROM flags WHERE nas_id IS NULL AND cleared_at IS NULL"
+    ) as cur:
+        open_flags = list(await cur.fetchall())
+    cleared = 0
+    for flag in open_flags:
+        if flag["rule"] not in firing:
+            await db.execute(
+                "UPDATE flags SET cleared_at = datetime('now') WHERE id = ?", (flag["id"],)
+            )
+            cleared += 1
+    await db.commit()
+    return {"raised": opened, "cleared": cleared}

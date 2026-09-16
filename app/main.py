@@ -13,6 +13,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.actions.registry import sync_actions
+from app.monitoring import scheduler
+from app import settings_store
 from app.config import get_settings
 from app.database import connect, init_db
 from app.version import get_version
@@ -20,6 +22,8 @@ from app.version import get_version
 # ── Routers ───────────────────────────────────────────────────────────────────
 from app.api import audit    as audit_router
 from app.api import auth     as auth_router
+from app.api import clients as clients_router
+from app.api import keys    as keys_router
 from app.api import monitoring as monitoring_router
 from app.api import nas      as nas_router
 from app.api import roles    as roles_router
@@ -43,9 +47,12 @@ async def lifespan(app: FastAPI):
         await sync_actions(conn)
     finally:
         await conn.close()
+    scheduler.start()
     log.info("NASQuay %s started", get_version())
 
     yield
+
+    await scheduler.stop()
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     log.info("NASQuay shutting down")
@@ -72,6 +79,8 @@ app.include_router(nas_router.router,      prefix="/api/nas",      tags=["nas"])
 app.include_router(run_router.router,      prefix="/api/run",      tags=["run"])
 app.include_router(audit_router.router,    prefix="/api/audit",    tags=["audit"])
 app.include_router(monitoring_router.router, prefix="/api/monitoring", tags=["monitoring"])
+app.include_router(clients_router.router,  prefix="/api/clients",    tags=["clients"])
+app.include_router(keys_router.router,     prefix="/api/keys",       tags=["keys"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])
 app.include_router(tools_router.router,    prefix="/api/tools",    tags=["tools"])
@@ -81,8 +90,17 @@ app.include_router(tools_router.router,    prefix="/api/tools",    tags=["tools"
 
 @app.get("/api/health", tags=["system"])
 async def health() -> dict[str, str]:
-    """Public and unauthenticated: says only that the service is up, and its version."""
-    return {"status": "ok", "version": get_version()}
+    """Public and unauthenticated: the service is up, its version, and how to show a time.
+
+    The time zone is here rather than behind /api/settings because the sign-in page and
+    every role need it, including one with no permission to read settings at all.
+    """
+    conn = await connect()
+    try:
+        zone = str((await settings_store.get_all(conn)).get("timezone", "UTC"))
+    finally:
+        await conn.close()
+    return {"status": "ok", "version": get_version(), "timezone": zone}
 
 
 # ── The web interface ─────────────────────────────────────────────────────────

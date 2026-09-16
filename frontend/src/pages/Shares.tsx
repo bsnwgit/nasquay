@@ -190,7 +190,7 @@ export default function Shares() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -237,7 +237,7 @@ export default function Shares() {
             </button>
 
             {expanded && (
-              <div className="border-t border-zinc-800 pt-3 space-y-3">
+              <div className="border-t border-zinc-600 pt-3 space-y-3">
                 <div className="text-xs text-zinc-300">
                   File and folder counts come from the NAS's own cached figures, which lag
                   behind what is really there.
@@ -272,7 +272,7 @@ export default function Shares() {
                     {entries.map((entry, index) => (
                       <div
                         key={`${entry.name ?? index}-${index}`}
-                        className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-800/40 last:border-0"
+                        className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-600/40 last:border-0"
                       >
                         <span className="text-zinc-200 flex-1 truncate">{entry.name ?? "unknown"}</span>
                         <span className="text-zinc-300">{entry.principal ?? ""}</span>
@@ -289,7 +289,7 @@ export default function Shares() {
                 )}
 
                 {exported && (
-                  <div className="border-t border-zinc-800/60 pt-2 text-xs">
+                  <div className="border-t border-zinc-600/60 pt-2 text-xs">
                     {exported.error ? (
                       <span className="text-zinc-300">
                         NFS export not read — {exported.error}
