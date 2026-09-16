@@ -5,6 +5,7 @@ import Roles from "./Roles";
 import NasSettings from "./NasSettings";
 
 // One settings section with tabs down the side, the way the suite's other apps do it.
+// Tools are not a tab: they belong to a NAS, so they live inside its row.
 const TABS = ["General", "NAS", "Users", "Roles", "Network"] as const;
 type Tab = (typeof TABS)[number];
 
