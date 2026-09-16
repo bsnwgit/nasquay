@@ -22,6 +22,7 @@ from app.api import audit    as audit_router
 from app.api import auth     as auth_router
 from app.api import nas      as nas_router
 from app.api import roles    as roles_router
+from app.api import run      as run_router
 from app.api import settings as settings_router
 from app.api import system   as system_router
 from app.api import tools    as tools_router
@@ -67,6 +68,7 @@ app.include_router(auth_router.router,     prefix="/api/auth",     tags=["auth"]
 app.include_router(users_router.router,    prefix="/api/users",    tags=["users"])
 app.include_router(roles_router.router,    prefix="/api/roles",    tags=["roles"])
 app.include_router(nas_router.router,      prefix="/api/nas",      tags=["nas"])
+app.include_router(run_router.router,      prefix="/api/run",      tags=["run"])
 app.include_router(audit_router.router,    prefix="/api/audit",    tags=["audit"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])

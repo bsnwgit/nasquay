@@ -201,14 +201,18 @@ class Connection:
     def call_tool(self, name: str, arguments: Optional[dict[str, Any]] = None) -> str:
         """The tool's reply as text — QNAP returns JSON documents inside it."""
         result = self._rpc("tools/call", {"name": name, "arguments": arguments or {}})
-        if result.get("isError"):
-            raise McpError(f"{name} failed on the NAS")
         parts = [
             part.get("text", "")
             for part in (result.get("content") or [])
             if isinstance(part, dict)
         ]
-        return " ".join(p for p in parts if p) or json.dumps(result)
+        text = " ".join(p for p in parts if p)
+        # A refusal arrives as a normal result with isError set, and the reason is in the
+        # same text field as a success ("nonexistent path: /..."). Carry it out: the page
+        # can only explain what went wrong if it is told.
+        if result.get("isError"):
+            raise McpError(text.strip() or f"{name} failed on the NAS")
+        return text or json.dumps(result)
 
     def close(self) -> None:
         if self._conn is not None:

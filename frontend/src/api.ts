@@ -105,6 +105,14 @@ export type Tool = {
 
 export type Discovery = { nas: string; found: number; added: number; unreviewed: number };
 
+export type RunResult = {
+  tool: string;
+  nas: string;
+  classification: string;
+  text: string;
+  json_result: unknown;
+};
+
 export type AddressChoice = { address: string; label: string };
 
 export type Network = {
@@ -275,6 +283,14 @@ export const api = {
     remove: (id: number) => request<void>(`/api/nas/${id}`, { method: "DELETE" }),
     check: (id: number) => request<NasCheck>(`/api/nas/${id}/check`, { method: "POST" }),
   },
+
+  // The one way a NAS tool is ever called: the server checks the role, the review state
+  // and the classification before it contacts a NAS.
+  run: (nasId: number, tool: string, args: Record<string, unknown> = {}, confirm = false) =>
+    request<RunResult>("/api/run", {
+      method: "POST",
+      body: { nas_id: nasId, tool, arguments: args, confirm },
+    }),
 
   tools: {
     list: () => request<Tool[]>("/api/tools"),

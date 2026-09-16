@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type Session } from "../api";
+import { LogoMark } from "../components/Logo";
 
 export default function Login({
   version,
@@ -29,9 +30,14 @@ export default function Login({
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <form onSubmit={submit} className="card w-full max-w-sm space-y-4">
-        <div>
-          <div className="text-lg font-semibold tracking-wide">NASQuay</div>
-          <div className="text-xs text-zinc-500">{version}</div>
+        <div className="flex items-center gap-3">
+          <LogoMark className="h-10 w-10 shrink-0" />
+          <div>
+            <div className="text-lg font-semibold tracking-wide">
+              NAS<span className="text-amber-400">Quay</span>
+            </div>
+            <div className="text-xs text-zinc-500">{version}</div>
+          </div>
         </div>
 
         <label className="block space-y-1">
