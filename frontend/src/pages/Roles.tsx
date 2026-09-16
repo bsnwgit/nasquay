@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Action, type Role } from "../api";
+import Help from "../components/Help";
 
 export default function Roles() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -71,7 +72,12 @@ export default function Roles() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Roles and permissions</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Roles and permissions</h1>
+        <Help>
+          <p>Every action NASQuay can perform, switched on or off per role — the app's own actions and every tool its NAS units offer.</p>
+          <p>A tool nobody has reviewed cannot be run by anyone, including an administrator, until it is classified.</p>
+          <p>These switches are checked before anything is sent to a NAS, and the same check covers the web pages, scheduled routines and the API alike.</p>
+        </Help>
         {note && <span className="text-sm text-amber-400">{note}</span>}
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
@@ -79,7 +85,7 @@ export default function Roles() {
       <div className="grid gap-4 md:grid-cols-[20rem_1fr]">
         <div className="space-y-3">
           <div className="card space-y-2">
-            <div className="text-xs uppercase tracking-wide text-zinc-400">
+            <div className="text-xs uppercase tracking-wide text-zinc-300">
               Roles ({roles.length})
             </div>
             {roles.map((r) => (
@@ -97,9 +103,9 @@ export default function Roles() {
               >
                 <div className="text-sm">
                   {r.name}
-                  {r.is_builtin && <span className="ml-2 text-xs text-zinc-500">built-in</span>}
+                  {r.is_builtin && <span className="ml-2 text-xs text-zinc-300">built-in</span>}
                 </div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-300">
                   {r.is_admin ? "every permission" : `${r.permissions.length} permissions`} ·{" "}
                   {r.user_count} {r.user_count === 1 ? "user" : "users"}
                 </div>
@@ -122,7 +128,7 @@ export default function Roles() {
               });
             }}
           >
-            <div className="text-xs uppercase tracking-wide text-zinc-400">New role</div>
+            <div className="text-xs uppercase tracking-wide text-zinc-300">New role</div>
             <input
               className="field"
               placeholder="name"
@@ -148,15 +154,15 @@ export default function Roles() {
         </div>
 
         <div className="card space-y-4">
-          {!role && <div className="text-sm text-zinc-500">Choose a role.</div>}
+          {!role && <div className="text-sm text-zinc-300">Choose a role.</div>}
 
           {role && (
             <>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="text-sm">{role.name}</div>
-                <div className="text-xs text-zinc-500">{role.description}</div>
+                <div className="text-xs text-zinc-300">{role.description}</div>
                 {readOnly ? (
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-zinc-300">
                     Built in. Holds every permission, including any added later, and cannot be
                     edited or deleted.
                   </div>
@@ -185,7 +191,7 @@ export default function Roles() {
 
               {byCategory.map(([category, list]) => (
                 <div key={category} className="space-y-1">
-                  <div className="text-xs uppercase tracking-wide text-zinc-500">{category}</div>
+                  <div className="text-xs uppercase tracking-wide text-zinc-300">{category}</div>
                   {list.map((action) => (
                     <label
                       key={action.id}
@@ -203,19 +209,19 @@ export default function Roles() {
                         onChange={() => toggle(action.id)}
                       />
                       <span>
-                        <span className="font-mono text-xs text-zinc-300">{action.id}</span>
+                        <span className="font-mono text-xs text-zinc-200">{action.id}</span>
                         <span
                           className={
                             action.classification === "destructive"
                               ? "ml-2 text-xs text-red-400"
                               : action.classification === "write"
                                 ? "ml-2 text-xs text-amber-400"
-                                : "ml-2 text-xs text-zinc-500"
+                                : "ml-2 text-xs text-zinc-300"
                           }
                         >
                           {action.classification}
                         </span>
-                        <div className="text-xs text-zinc-500">{action.description}</div>
+                        <div className="text-xs text-zinc-300">{action.description}</div>
                       </span>
                     </label>
                   ))}

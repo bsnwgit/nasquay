@@ -22,6 +22,11 @@
            hover:bg-amber-400 disabled:opacity-40;
   }
   /* State, not action: green while something is enabled, red while it is not. */
+  /* The action currently running, in the same amber the interface uses for "active". */
+  .btn-active {
+    @apply px-3 py-1 text-sm border border-amber-500 text-amber-400 bg-amber-500/10
+           disabled:opacity-100;
+  }
   .btn-on {
     @apply px-3 py-1 text-sm border border-emerald-600 text-emerald-400 hover:bg-emerald-950;
   }
@@ -35,7 +40,7 @@
     @apply border border-zinc-800 bg-zinc-900/40 p-4;
   }
   .th {
-    @apply text-left text-xs uppercase tracking-wide text-zinc-400 font-medium px-2 py-2
+    @apply text-left text-xs uppercase tracking-wide text-zinc-300 font-medium px-2 py-2
            border-b border-zinc-800;
   }
   .td {

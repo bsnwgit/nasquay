@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
 import { bytes, when } from "../utils/format";
+import Help from "../components/Help";
 
 // Browsing a NAS through list_files. Paths here are File Station's, not the shell's: the
 // root lists the shared folders, and a share is "/Series-B" rather than the real
@@ -119,7 +120,12 @@ export default function Files() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Files</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Files</h1>
+        <Help>
+          <p>Browsing a NAS as it sees itself. Paths here are the ones its file service uses — a share is <code>/Series-B</code>, not its place on disk.</p>
+          <p>Read-only. Nothing on this page copies, moves, renames, deletes or creates a share link.</p>
+          <p>Sizes and dates are as the NAS reports them for each entry; a folder's size is not its contents' total. For that, use a deep read in Monitoring.</p>
+        </Help>
         {units.map((nas) => (
           <button
             key={nas.id}
@@ -130,7 +136,7 @@ export default function Files() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -139,13 +145,13 @@ export default function Files() {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
 
-      {units.length === 0 && <div className="card text-sm text-zinc-500">No enabled NAS units.</div>}
+      {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
 
       {units.length > 0 && (
         <div className="flex items-center gap-1 text-sm flex-wrap">
           <button
             onClick={() => go("/")}
-            className={path === "/" ? "text-amber-400" : "text-zinc-400 hover:text-zinc-100"}
+            className={path === "/" ? "text-amber-400" : "text-zinc-300 hover:text-zinc-100"}
           >
             {nasName}
           </button>
@@ -154,10 +160,10 @@ export default function Files() {
             const last = index === segments.length - 1;
             return (
               <span key={upto} className="flex items-center gap-1">
-                <span className="text-zinc-600">/</span>
+                <span className="text-zinc-300">/</span>
                 <button
                   onClick={() => go(upto)}
-                  className={last ? "text-amber-400" : "text-zinc-400 hover:text-zinc-100"}
+                  className={last ? "text-amber-400" : "text-zinc-300 hover:text-zinc-100"}
                 >
                   {segment}
                 </button>
@@ -190,31 +196,31 @@ export default function Files() {
                         onClick={() => go(join(path, row.name))}
                         className="text-zinc-100 hover:text-amber-400 text-left"
                       >
-                        <span className="text-zinc-600 mr-2">▸</span>
+                        <span className="text-zinc-300 mr-2">▸</span>
                         {row.name}
                       </button>
                     ) : (
-                      <span className="text-zinc-300">
-                        <span className="text-zinc-700 mr-2">·</span>
+                      <span className="text-zinc-200">
+                        <span className="text-zinc-400 mr-2">·</span>
                         {row.name}
                       </span>
                     )}
-                    {row.volume && <span className="text-xs text-zinc-500 ml-2">{row.volume}</span>}
+                    {row.volume && <span className="text-xs text-zinc-300 ml-2">{row.volume}</span>}
                   </td>
-                  <td className="td text-zinc-400 whitespace-nowrap">
+                  <td className="td text-zinc-300 whitespace-nowrap">
                     {row.folder ? "" : bytes(row.size)}
                   </td>
-                  <td className="td text-zinc-400 whitespace-nowrap">{when(row.mtime)}</td>
-                  <td className="td text-zinc-400 whitespace-nowrap">
+                  <td className="td text-zinc-300 whitespace-nowrap">{when(row.mtime)}</td>
+                  <td className="td text-zinc-300 whitespace-nowrap">
                     {row.owner}
-                    {row.group && <span className="text-zinc-600"> / {row.group}</span>}
+                    {row.group && <span className="text-zinc-300"> / {row.group}</span>}
                   </td>
-                  <td className="td text-zinc-500 whitespace-nowrap">{row.privilege}</td>
+                  <td className="td text-zinc-300 whitespace-nowrap">{row.privilege}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td className="td text-zinc-500" colSpan={5}>
+                  <td className="td text-zinc-300" colSpan={5}>
                     Nothing here.
                   </td>
                 </tr>
@@ -225,7 +231,7 @@ export default function Files() {
       )}
 
       {!busy && !error && total > PAGE && (
-        <div className="flex items-center gap-3 text-xs text-zinc-500">
+        <div className="flex items-center gap-3 text-xs text-zinc-300">
           <button
             className="btn"
             disabled={offset === 0}

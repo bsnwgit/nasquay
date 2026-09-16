@@ -113,6 +113,45 @@ export type RunResult = {
   json_result: unknown;
 };
 
+export type Target = {
+  id: number;
+  nas_id: number;
+  nas: string;
+  kind: string;
+  ref: string;
+  label: string;
+  enabled: boolean;
+  first_seen: string;
+  last_seen: string;
+  last_reading_at: string | null;
+};
+
+export type Reading = {
+  taken_at: string;
+  target_id: number;
+  metric: string;
+  value: number | null;
+  source: string;
+  rounded: boolean;
+  cached: boolean;
+  backfilled: boolean;
+};
+
+export type Flag = {
+  id: number;
+  raised_at: string;
+  rule: string;
+  target_id: number | null;
+  nas_id: number | null;
+  severity: string;
+  detail: string;
+  value: number | null;
+  previous: number | null;
+  cleared_at: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by: string;
+};
+
 export type AddressChoice = { address: string; label: string };
 
 export type Network = {
@@ -291,6 +330,37 @@ export const api = {
       method: "POST",
       body: { nas_id: nasId, tool, arguments: args, confirm },
     }),
+
+  monitoring: {
+    targets: () => request<Target[]>("/api/monitoring/targets"),
+    setTarget: (id: number, enabled: boolean) =>
+      request<Target>(`/api/monitoring/targets/${id}`, { method: "PATCH", body: { enabled } }),
+    discover: (nasId: number) =>
+      request<{ nas: string; found: number; added: number; problems: string[] }>(
+        `/api/monitoring/discover/${nasId}`,
+        { method: "POST" },
+      ),
+    collect: (nasId: number, tier: string) =>
+      request<{ nas: string; tier: string; readings: number; problems: string[] }>(
+        "/api/monitoring/collect",
+        { method: "POST", body: { nas_id: nasId, tier } },
+      ),
+    backfill: (nasId: number) =>
+      request<{ nas: string; readings: number; windows: Record<string, number>; problems: string[] }>(
+        `/api/monitoring/backfill/${nasId}`,
+        { method: "POST" },
+      ),
+    readings: (options: { limit?: number; target_id?: number; metric?: string } = {}) => {
+      const query = new URLSearchParams({ limit: String(options.limit ?? 500) });
+      if (options.target_id !== undefined) query.set("target_id", String(options.target_id));
+      if (options.metric) query.set("metric", options.metric);
+      return request<Reading[]>(`/api/monitoring/readings?${query.toString()}`);
+    },
+    flags: (openOnly = true) =>
+      request<Flag[]>(`/api/monitoring/flags?open_only=${openOnly}`),
+    acknowledge: (id: number, clear: boolean) =>
+      request<Flag>(`/api/monitoring/flags/${id}`, { method: "PATCH", body: { clear } }),
+  },
 
   tools: {
     list: () => request<Tool[]>("/api/tools"),

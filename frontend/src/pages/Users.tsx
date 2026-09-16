@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Role, type User } from "../api";
+import Help from "../components/Help";
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -40,7 +41,11 @@ export default function Users() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Users</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Users</h1>
+        <Help>
+          <p>NASQuay's own accounts, which are separate from the accounts on any NAS.</p>
+          <p>A user's role decides what they may do. The last remaining administrator cannot be disabled, demoted or deleted — by the interface or by the database.</p>
+        </Help>
         <button className="btn" onClick={() => setCreating((v) => !v)}>
           {creating ? "Cancel" : "Add user"}
         </button>
@@ -95,7 +100,7 @@ export default function Users() {
             <tr key={user.id}>
               <td className="td">
                 <div>{user.username}</div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-300">
                   {user.display_name}
                   {user.display_name && user.email ? " · " : ""}
                   {user.email}
@@ -126,7 +131,7 @@ export default function Users() {
                   {user.is_active ? "Enabled" : "Disabled"}
                 </button>
               </td>
-              <td className="td text-zinc-400">{user.last_login ?? "never"}</td>
+              <td className="td text-zinc-300">{user.last_login ?? "never"}</td>
               <td className="td">
                 <div className="flex gap-2 justify-end">
                   <button

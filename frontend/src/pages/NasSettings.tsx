@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Nas, type Tool } from "../api";
+import Help from "../components/Help";
 
 // One page for the NAS units. Each row collapses to its state and expands to everything
 // about that box: its buttons, its settings, and the tools it offers.
@@ -116,7 +117,12 @@ export default function NasSettings() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">NAS units</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">NAS units</h1>
+        <Help>
+          <p>The NAS units NASQuay can reach, and how it reaches them.</p>
+          <p>Adding one is two steps on purpose: read the certificate it presents, then save it. From then on that exact certificate is required, so a substituted one is refused rather than trusted.</p>
+          <p>Tokens go in but never come out — the API reports only whether one is set. Leaving the field empty when editing keeps the stored token.</p>
+        </Help>
         <button className="btn" onClick={() => setAdding((v) => !v)}>
           {adding ? "Cancel" : "Add NAS"}
         </button>
@@ -141,22 +147,22 @@ export default function NasSettings() {
         >
           <div className="grid gap-3 md:grid-cols-4">
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">Name</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">Name</span>
               <input className="field" value={form.name}
                      onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </label>
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">Address</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">Address</span>
               <input className="field" placeholder="10.0.0.10" value={form.address}
                      onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </label>
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">MCP port</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">MCP port</span>
               <input className="field" type="number" min={1} max={65535} value={form.mcp_port}
                      onChange={(e) => setForm({ ...form, mcp_port: Number(e.target.value) })} />
             </label>
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">Certificate</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">Certificate</span>
               <select className="field" value={form.tls_mode}
                       onChange={(e) => setForm({ ...form, tls_mode: e.target.value })}>
                 <option value="pinned">Pin this NAS's certificate</option>
@@ -168,7 +174,7 @@ export default function NasSettings() {
           {form.tls_mode === "pinned" && (
             <div className="flex gap-2 items-end">
               <label className="space-y-1 flex-1">
-                <span className="text-xs uppercase tracking-wide text-zinc-400">
+                <span className="text-xs uppercase tracking-wide text-zinc-300">
                   Certificate fingerprint (SHA-256)
                 </span>
                 <input className="field font-mono text-xs" value={form.tls_fingerprint}
@@ -183,19 +189,19 @@ export default function NasSettings() {
 
           <div className="grid gap-3 md:grid-cols-3">
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">MCP token</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">MCP token</span>
               <input className="field" type="password" value={form.mcp_token}
                      onChange={(e) => setForm({ ...form, mcp_token: e.target.value })} />
-              <span className="block text-xs text-zinc-500">Stored encrypted; never shown again.</span>
+              <span className="block text-xs text-zinc-300">Stored encrypted; never shown again.</span>
             </label>
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">SSH account</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">SSH account</span>
               <input className="field" value={form.ssh_user}
                      onChange={(e) => setForm({ ...form, ssh_user: e.target.value })} />
-              <span className="block text-xs text-zinc-500">An account on the NAS. Optional.</span>
+              <span className="block text-xs text-zinc-300">An account on the NAS. Optional.</span>
             </label>
             <label className="space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-400">SSH port</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-300">SSH port</span>
               <input className="field" type="number" min={1} max={65535} value={form.ssh_port}
                      onChange={(e) => setForm({ ...form, ssh_port: Number(e.target.value) })} />
             </label>
@@ -205,7 +211,7 @@ export default function NasSettings() {
         </form>
       )}
 
-      {units.length === 0 && <div className="card text-sm text-zinc-500">No NAS units yet.</div>}
+      {units.length === 0 && <div className="card text-sm text-zinc-300">No NAS units yet.</div>}
 
       {units.map((nas) => {
         const mine = tools.filter((t) => t.nas.includes(nas.name));
@@ -219,9 +225,9 @@ export default function NasSettings() {
               className="w-full flex items-center gap-3 text-left"
               onClick={() => setOpen(expanded ? null : nas.id)}
             >
-              <span className="text-zinc-500 w-3">{expanded ? "▾" : "▸"}</span>
+              <span className="text-zinc-300 w-3">{expanded ? "▾" : "▸"}</span>
               <span className="text-sm">{nas.name}</span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-zinc-300">
                 {nas.address}:{nas.mcp_port}
                 {nas.ssh_user ? ` · ssh ${nas.ssh_user}` : ""}
                 {mine.length ? ` · ${mine.length} tools` : " · no tools discovered"}
@@ -268,13 +274,13 @@ export default function NasSettings() {
                   </button>
                 </div>
 
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-300">
                   {nas.tls_mode === "pinned" ? "pinned certificate" : "system trust"} ·{" "}
                   {nas.has_token ? "token set" : "no token set"}
                   {nas.last_checked_at && (
                     <>
                       {" · last checked "}{nas.last_checked_at}{" — "}
-                      <span className={nas.last_check_ok ? "text-zinc-400" : "text-red-400"}>
+                      <span className={nas.last_check_ok ? "text-zinc-300" : "text-red-400"}>
                         {nas.last_check_detail}
                       </span>
                     </>
@@ -294,7 +300,7 @@ export default function NasSettings() {
                     }}
                   >
                     <label className="space-y-1 flex-1">
-                      <span className="text-xs uppercase tracking-wide text-zinc-400">New MCP token</span>
+                      <span className="text-xs uppercase tracking-wide text-zinc-300">New MCP token</span>
                       <input className="field" type="password" value={newToken}
                              onChange={(e) => setNewToken(e.target.value)} />
                     </label>
@@ -316,23 +322,23 @@ export default function NasSettings() {
                   >
                     <div className="grid gap-3 md:grid-cols-4">
                       <label className="space-y-1">
-                        <span className="text-xs uppercase tracking-wide text-zinc-400">Name</span>
+                        <span className="text-xs uppercase tracking-wide text-zinc-300">Name</span>
                         <input className="field" value={String(edit.name ?? "")}
                                onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs uppercase tracking-wide text-zinc-400">Address</span>
+                        <span className="text-xs uppercase tracking-wide text-zinc-300">Address</span>
                         <input className="field" value={String(edit.address ?? "")}
                                onChange={(e) => setEdit({ ...edit, address: e.target.value })} />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs uppercase tracking-wide text-zinc-400">MCP port</span>
+                        <span className="text-xs uppercase tracking-wide text-zinc-300">MCP port</span>
                         <input className="field" type="number" min={1} max={65535}
                                value={Number(edit.mcp_port ?? 8443)}
                                onChange={(e) => setEdit({ ...edit, mcp_port: Number(e.target.value) })} />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs uppercase tracking-wide text-zinc-400">Certificate</span>
+                        <span className="text-xs uppercase tracking-wide text-zinc-300">Certificate</span>
                         <select className="field" value={String(edit.tls_mode ?? "pinned")}
                                 onChange={(e) => setEdit({ ...edit, tls_mode: e.target.value })}>
                           <option value="pinned">Pin this NAS's certificate</option>
@@ -344,7 +350,7 @@ export default function NasSettings() {
                     {edit.tls_mode === "pinned" && (
                       <div className="flex gap-2 items-end">
                         <label className="space-y-1 flex-1">
-                          <span className="text-xs uppercase tracking-wide text-zinc-400">
+                          <span className="text-xs uppercase tracking-wide text-zinc-300">
                             Certificate fingerprint (SHA-256)
                           </span>
                           <input className="field font-mono text-xs"
@@ -360,15 +366,15 @@ export default function NasSettings() {
 
                     <div className="grid gap-3 md:grid-cols-3">
                       <label className="space-y-1">
-                        <span className="text-xs uppercase tracking-wide text-zinc-400">SSH account</span>
+                        <span className="text-xs uppercase tracking-wide text-zinc-300">SSH account</span>
                         <input className="field" value={String(edit.ssh_user ?? "")}
                                onChange={(e) => setEdit({ ...edit, ssh_user: e.target.value })} />
-                        <span className="block text-xs text-zinc-500">
+                        <span className="block text-xs text-zinc-300">
                           An account on the NAS, not NASQuay's key name.
                         </span>
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs uppercase tracking-wide text-zinc-400">SSH port</span>
+                        <span className="text-xs uppercase tracking-wide text-zinc-300">SSH port</span>
                         <input className="field" type="number" min={1} max={65535}
                                value={Number(edit.ssh_port ?? 22)}
                                onChange={(e) => setEdit({ ...edit, ssh_port: Number(e.target.value) })} />
@@ -381,11 +387,11 @@ export default function NasSettings() {
 
                 {/* The tools this box offers, and how NASQuay classifies them. */}
                 <div className="space-y-2">
-                  <div className="text-xs uppercase tracking-wide text-zinc-400">
+                  <div className="text-xs uppercase tracking-wide text-zinc-300">
                     Tools ({mine.length})
                   </div>
                   {mine.length === 0 && (
-                    <div className="text-sm text-zinc-500">
+                    <div className="text-sm text-zinc-300">
                       None discovered yet — use Discover tools above.
                     </div>
                   )}
@@ -399,7 +405,7 @@ export default function NasSettings() {
                       The description is the row's hover text rather than a second line. */}
                   {[...new Set(mine.map((t) => t.category))].sort().map((category) => (
                     <div key={category}>
-                      <div className="text-xs uppercase tracking-wide text-zinc-500 mt-3 mb-1">
+                      <div className="text-xs uppercase tracking-wide text-zinc-300 mt-3 mb-1">
                         {category}
                       </div>
                       {/* The divider is drawn on the grid, not the rows: a border on each
@@ -416,7 +422,7 @@ export default function NasSettings() {
                               title={tool.description || "No description given"}
                               className="flex items-center gap-2 py-0.5 border-b border-zinc-800/40 last:border-0"
                             >
-                              <span className="font-mono text-xs text-zinc-300 flex-1 truncate">
+                              <span className="font-mono text-xs text-zinc-200 flex-1 truncate">
                                 {tool.tool_name}
                               </span>
                               <select

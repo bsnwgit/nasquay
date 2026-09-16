@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
 import { bytes } from "../utils/format";
+import Help from "../components/Help";
 
 // The first page built on /api/run: it calls list_storages on a NAS and lays out what
 // comes back. Nothing here talks to a NAS directly, so the role check and the audit
@@ -97,7 +98,12 @@ export default function Storage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Storage</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Storage</h1>
+        <Help>
+          <p>The pools, volumes and disks each NAS reports, read live through its own API rather than from any cached figure.</p>
+          <p>A pool that is not healthy is explained in words, and the slots it cannot read are named — a degraded array usually means a drive has dropped out of it.</p>
+          <p>Volume usage bars are the NAS's own view. Where the same fact can be measured another way, Monitoring records both so they can be compared.</p>
+        </Help>
         {units.map((nas) => (
           <button
             key={nas.id}
@@ -105,7 +111,7 @@ export default function Storage() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -117,11 +123,11 @@ export default function Storage() {
       {busy && <Busy label={busy} />}
 
       {units.length === 0 && (
-        <div className="card text-sm text-zinc-500">No enabled NAS units.</div>
+        <div className="card text-sm text-zinc-300">No enabled NAS units.</div>
       )}
 
       {!busy && !error && units.length > 0 && pools.length === 0 && (
-        <div className="card text-sm text-zinc-500">No pools reported.</div>
+        <div className="card text-sm text-zinc-300">No pools reported.</div>
       )}
 
       {!busy && pools.map((pool) => {
@@ -137,11 +143,11 @@ export default function Storage() {
               <span className={degraded ? "text-xs text-red-400" : "text-xs text-emerald-400"}>
                 {statusText(pool.pool_status)}
               </span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-zinc-300">
                 {bytes(pool.pool_capacity)} capacity · {bytes(pool.pool_freesize)} free
               </span>
               {(pool.raid_info ?? []).map((raid) => (
-                <span key={raid.raid_id} className="text-xs text-zinc-500">
+                <span key={raid.raid_id} className="text-xs text-zinc-300">
                   RAID {raid.raid_level} · {(raid.disks ?? []).length} disks
                 </span>
               ))}
@@ -154,7 +160,7 @@ export default function Storage() {
                 </div>
 
                 {(pool.raid_info ?? []).map((raid) => (
-                  <div key={raid.raid_id} className="text-xs text-zinc-300">
+                  <div key={raid.raid_id} className="text-xs text-zinc-200">
                     RAID {raid.raid_level}
                     {raid.raid_status ? ` · state ${raid.raid_status}` : ""} ·{" "}
                     {(raid.disks ?? []).length} slots,{" "}
@@ -170,7 +176,7 @@ export default function Storage() {
                   </div>
                 )}
 
-                <div className="text-xs text-zinc-400">
+                <div className="text-xs text-zinc-300">
                   Every readable disk is listed below with its slot and model. A RAID 5 pool
                   with one slot missing still serves data but has no redundancy left: a second
                   failure loses the pool.
@@ -196,11 +202,11 @@ export default function Storage() {
                         <td className="td">
                           {volume.vol_label || `volume ${volume.vol_no}`}
                           {volume.thin_volume && (
-                            <span className="text-xs text-zinc-500"> · thin</span>
+                            <span className="text-xs text-zinc-300"> · thin</span>
                           )}
                         </td>
-                        <td className="td text-zinc-400">{bytes(volume.capacity_bytes)}</td>
-                        <td className="td text-zinc-400">{bytes(volume.freesize_bytes)}</td>
+                        <td className="td text-zinc-300">{bytes(volume.capacity_bytes)}</td>
+                        <td className="td text-zinc-300">{bytes(volume.freesize_bytes)}</td>
                         <td className="td">
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 w-28 bg-zinc-800">
@@ -209,7 +215,7 @@ export default function Storage() {
                                 style={{ width: `${Math.min(100, Math.max(0, used))}%` }}
                               />
                             </div>
-                            <span className="text-xs text-zinc-400">{used}%</span>
+                            <span className="text-xs text-zinc-300">{used}%</span>
                           </div>
                         </td>
                       </tr>
@@ -228,14 +234,14 @@ export default function Storage() {
                       key={`${disk.disk_no}-${index}`}
                       className="flex items-center gap-2 text-xs py-0.5 border-b border-zinc-800/40 last:border-0"
                     >
-                      <span className={unreadable ? "text-red-400 flex-1 truncate" : "text-zinc-300 flex-1 truncate"}>
+                      <span className={unreadable ? "text-red-400 flex-1 truncate" : "text-zinc-200 flex-1 truncate"}>
                         {disk.pd_alias || disk.disk_no || "slot"}
                       </span>
-                      <span className={unreadable ? "text-red-400 truncate" : "text-zinc-500 truncate"}>
+                      <span className={unreadable ? "text-red-400 truncate" : "text-zinc-300 truncate"}>
                         {disk.model_number || "nothing readable in this slot"}
                       </span>
-                      <span className="text-zinc-400">{disk.size || "—"}</span>
-                      <span className="text-zinc-600">{disk.type || disk.interface || ""}</span>
+                      <span className="text-zinc-300">{disk.size || "—"}</span>
+                      <span className="text-zinc-300">{disk.type || disk.interface || ""}</span>
                     </div>
                   );
                 })}

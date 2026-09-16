@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
+import Help from "../components/Help";
 
 // QuLog's two logs, read through list_event_logs and list_access_logs. Both take the same
 // filters: a severity bitmask, a keyword, and a date range whose relative form is a plain
@@ -84,7 +85,7 @@ const SINCE = [
 ];
 
 const LEVELS: Record<number, { label: string; tone: string }> = {
-  1: { label: "info", tone: "text-zinc-500" },
+  1: { label: "info", tone: "text-zinc-300" },
   2: { label: "warning", tone: "text-amber-400" },
   4: { label: "error", tone: "text-red-400" },
 };
@@ -159,7 +160,13 @@ export default function Logs() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Logs</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Logs</h1>
+        <Help>
+          <p>The NAS's own two logs. <span className="text-zinc-200">Events</span> is what the system did; <span className="text-zinc-200">Access</span> is who reached what.</p>
+          <p>The NAS records access as numeric codes with no explanation attached. The protocol and action columns translate them — that mapping was derived by matching the NAS's own exported log against these same rows, not guessed. A code outside it is shown as a number.</p>
+          <p>Any row opens to show everything else the NAS recorded about it.</p>
+          <p>One thing the log cannot tell you: a failed key-based SSH login is never recorded, so an absence of failures is not proof that nothing was tried.</p>
+        </Help>
         {units.map((nas) => (
           <button
             key={nas.id}
@@ -167,7 +174,7 @@ export default function Logs() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -176,7 +183,7 @@ export default function Logs() {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
 
-      {units.length === 0 && <div className="card text-sm text-zinc-500">No enabled NAS units.</div>}
+      {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
 
       {units.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap text-sm">
@@ -187,7 +194,7 @@ export default function Logs() {
               className={
                 one.key === kind.key
                   ? "px-3 py-1 border border-amber-500 text-amber-400"
-                  : "px-3 py-1 border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                  : "px-3 py-1 border border-zinc-700 text-zinc-200 hover:border-zinc-500"
               }
             >
               {one.label}
@@ -203,7 +210,7 @@ export default function Logs() {
               className={
                 one.mask === severity
                   ? "px-2 py-1 text-xs border border-amber-500 text-amber-400"
-                  : "px-2 py-1 text-xs border border-zinc-800 text-zinc-400 hover:border-zinc-600"
+                  : "px-2 py-1 text-xs border border-zinc-800 text-zinc-300 hover:border-zinc-600"
               }
             >
               {one.label}
@@ -219,7 +226,7 @@ export default function Logs() {
               className={
                 one.value === since
                   ? "px-2 py-1 text-xs border border-amber-500 text-amber-400"
-                  : "px-2 py-1 text-xs border border-zinc-800 text-zinc-400 hover:border-zinc-600"
+                  : "px-2 py-1 text-xs border border-zinc-800 text-zinc-300 hover:border-zinc-600"
               }
             >
               {one.label}
@@ -256,9 +263,9 @@ export default function Logs() {
       )}
 
       {!busy && !error && answer.severity && (
-        <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <div className="flex items-center gap-4 text-xs text-zinc-300">
           <span>{total} entries match</span>
-          <span className="text-zinc-500">{answer.severity.info ?? 0} information</span>
+          <span className="text-zinc-300">{answer.severity.info ?? 0} information</span>
           <span className="text-amber-400">{answer.severity.warn ?? 0} warning</span>
           <span className="text-red-400">{answer.severity.error ?? 0} error</span>
         </div>
@@ -282,7 +289,7 @@ export default function Logs() {
             </thead>
             <tbody>
               {entries.map((entry) => {
-                const level = LEVELS[entry.level ?? 1] ?? { label: String(entry.level), tone: "text-zinc-500" };
+                const level = LEVELS[entry.level ?? 1] ?? { label: String(entry.level), tone: "text-zinc-300" };
                 const expanded = opened === entry.id;
                 const rest = Object.entries(entry).filter(
                   ([field, value]) => !LAID_OUT.includes(field) && !blank(value),
@@ -293,12 +300,12 @@ export default function Logs() {
                       className="hover:bg-zinc-900/60 cursor-pointer"
                       onClick={() => setOpened(expanded ? null : entry.id ?? null)}
                     >
-                      <td className="td text-zinc-400 whitespace-nowrap">
-                        <span className="text-zinc-600 mr-2">{expanded ? "▾" : "▸"}</span>
+                      <td className="td text-zinc-300 whitespace-nowrap">
+                        <span className="text-zinc-300 mr-2">{expanded ? "▾" : "▸"}</span>
                         {entry.date} {entry.time}
                       </td>
                       <td className={`td whitespace-nowrap ${level.tone}`}>{level.label}</td>
-                      <td className="td text-zinc-400 whitespace-nowrap">
+                      <td className="td text-zinc-300 whitespace-nowrap">
                         {kind.key === "access"
                           ? SERVICES[entry.service as number] ??
                             (blank(entry.clientApp) ? show(entry.service) : String(entry.clientApp))
@@ -307,24 +314,24 @@ export default function Logs() {
                       {kind.key === "access" && (
                         <td
                           className={`td whitespace-nowrap ${
-                            entry.action === 256 ? "text-red-400" : "text-zinc-400"
+                            entry.action === 256 ? "text-red-400" : "text-zinc-300"
                           }`}
                         >
                           {ACTIONS[entry.action as number] ?? show(entry.action)}
                         </td>
                       )}
-                      <td className="td text-zinc-400 whitespace-nowrap">{show(entry.user)}</td>
-                      <td className="td text-zinc-500 whitespace-nowrap">{show(entry.ip)}</td>
-                      <td className="td text-zinc-300 break-all">
+                      <td className="td text-zinc-300 whitespace-nowrap">{show(entry.user)}</td>
+                      <td className="td text-zinc-300 whitespace-nowrap">{show(entry.ip)}</td>
+                      <td className="td text-zinc-200 break-all">
                         {show(kind.key === "access" ? entry.resource : entry.message)}
                       </td>
                     </tr>
                     {expanded && (
                       <tr>
-                        <td className="td text-xs text-zinc-500" colSpan={kind.key === "access" ? 7 : 6}>
+                        <td className="td text-xs text-zinc-300" colSpan={kind.key === "access" ? 7 : 6}>
                           <div className="flex flex-wrap gap-x-6 gap-y-1">
                             {!blank(entry.message) && kind.key === "access" && (
-                              <span className="text-zinc-300">{String(entry.message)}</span>
+                              <span className="text-zinc-200">{String(entry.message)}</span>
                             )}
                             {!blank(entry.computer) && <span>computer {String(entry.computer)}</span>}
                             {rest.map(([field, value]) => (
@@ -344,7 +351,7 @@ export default function Logs() {
               })}
               {entries.length === 0 && (
                 <tr>
-                  <td className="td text-zinc-500" colSpan={kind.key === "access" ? 7 : 6}>
+                  <td className="td text-zinc-300" colSpan={kind.key === "access" ? 7 : 6}>
                     Nothing matches.
                   </td>
                 </tr>
@@ -355,7 +362,7 @@ export default function Logs() {
       )}
 
       {!busy && !error && total > PAGE && (
-        <div className="flex items-center gap-3 text-xs text-zinc-500">
+        <div className="flex items-center gap-3 text-xs text-zinc-300">
           <button className="btn" disabled={page === 1} onClick={() => setPage(page - 1)}>
             Previous
           </button>

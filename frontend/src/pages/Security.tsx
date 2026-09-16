@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
 import { when } from "../utils/format";
+import Help from "../components/Help";
 
 // What the NAS's own security apps report. Most of them are separate QNAP applications that
 // may not be installed, and the NAS says so in words — those refusals are shown as they
@@ -106,7 +107,11 @@ export default function Security() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-sm uppercase tracking-wide text-zinc-400">Security</h1>
+        <h1 className="text-sm uppercase tracking-wide text-zinc-300">Security</h1>
+        <Help>
+          <p>What the NAS's own security applications report. Several are separate QNAP products that may not be installed, and where one is missing the NAS's own wording is shown rather than an empty panel.</p>
+          <p>Read-only. Starting a scan changes the NAS, so it needs a confirmation path this page does not yet have.</p>
+        </Help>
         {units.map((nas) => (
           <button
             key={nas.id}
@@ -114,7 +119,7 @@ export default function Security() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -123,14 +128,14 @@ export default function Security() {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
 
-      {units.length === 0 && <div className="card text-sm text-zinc-500">No enabled NAS units.</div>}
+      {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
 
       {busy && <Busy label={busy} />}
 
       {!busy && units.length > 0 && (
         <>
           <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">
+            <h2 className="text-xs uppercase tracking-wide text-zinc-300">
               Security applications on {nasName}
             </h2>
             {(centre.apps ?? []).map((app) => (
@@ -142,53 +147,53 @@ export default function Security() {
                     }
                   />
                   <span className="text-sm">{app.name}</span>
-                  <span className="text-xs text-zinc-500">{app.status}</span>
+                  <span className="text-xs text-zinc-300">{app.status}</span>
                   {app.previous_operation && app.previous_operation !== "-" && (
-                    <span className="text-xs text-zinc-600 ml-auto">
+                    <span className="text-xs text-zinc-300 ml-auto">
                       last run {when(app.previous_operation)}
                     </span>
                   )}
                 </div>
                 <div className="text-xs pl-5">
                   {app.last_reports?.result && (
-                    <span className="text-zinc-300">{app.last_reports.result}</span>
+                    <span className="text-zinc-200">{app.last_reports.result}</span>
                   )}
                   {app.last_reports?.error && (
-                    <span className="text-zinc-500">{app.last_reports.error}</span>
+                    <span className="text-zinc-300">{app.last_reports.error}</span>
                   )}
                 </div>
               </div>
             ))}
             {(centre.apps ?? []).length === 0 && !error && (
-              <div className="card text-sm text-zinc-500">
+              <div className="card text-sm text-zinc-300">
                 The NAS reported no security applications.
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">Malware Remover</h2>
+            <h2 className="text-xs uppercase tracking-wide text-zinc-300">Malware Remover</h2>
             <div className="card text-xs space-y-1">
               {malware ? (
                 <>
-                  <div className="text-sm text-zinc-300">{malware.last_result ?? "—"}</div>
-                  <div className="text-zinc-500">
+                  <div className="text-sm text-zinc-200">{malware.last_result ?? "—"}</div>
+                  <div className="text-zinc-300">
                     {malware.status}
                     {malware.last_scan_time_local && ` · ${when(malware.last_scan_time_local)}`}
                     {/* `enable` is the scheduled scan, not whether the app is installed. */}
-                    <span className={malware.enable ? "text-zinc-500" : "text-zinc-600"}>
+                    <span className={malware.enable ? "text-zinc-300" : "text-zinc-300"}>
                       {malware.enable ? " · scheduled scanning on" : " · scheduled scanning off"}
                     </span>
                   </div>
                 </>
               ) : (
-                <div className="text-zinc-500">{malwareError}</div>
+                <div className="text-zinc-300">{malwareError}</div>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xs uppercase tracking-wide text-zinc-500">Security policy</h2>
+            <h2 className="text-xs uppercase tracking-wide text-zinc-300">Security policy</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {LEVELS.map((one) => (
                 <button
@@ -197,7 +202,7 @@ export default function Security() {
                   className={
                     one === level
                       ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                      : "px-3 py-1 text-sm border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                      : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
                   }
                 >
                   {one}
@@ -206,7 +211,7 @@ export default function Security() {
             </div>
             {policyBusy && <Busy label={`Reading the ${level} policy on ${nasName}`} />}
             {!policyBusy && policy && (
-              <pre className="card text-xs text-zinc-400 whitespace-pre-wrap break-all">
+              <pre className="card text-xs text-zinc-300 whitespace-pre-wrap break-all">
                 {policy}
               </pre>
             )}

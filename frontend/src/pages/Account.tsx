@@ -48,7 +48,7 @@ export default function Account({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-3">
-          <h1 className="text-sm uppercase tracking-wide text-zinc-400">Account</h1>
+          <h1 className="text-sm uppercase tracking-wide text-zinc-300">Account</h1>
           <button className="btn ml-auto" onClick={onClose}>
             Close
           </button>
@@ -56,12 +56,12 @@ export default function Account({
 
         <div className="card text-sm space-y-1">
           <div>{session.username}</div>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-zinc-300">
             Role: {session.role}
             {session.is_admin ? " · admin" : ""}
           </div>
           {me && (
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-zinc-300">
               {me.display_name && <div>{me.display_name}</div>}
               {me.email && <div>{me.email}</div>}
               <div>Last signed in: {me.last_login ?? "never"}</div>
@@ -71,7 +71,7 @@ export default function Account({
         </div>
 
         <form className="card space-y-3" onSubmit={submit}>
-          <div className="text-xs uppercase tracking-wide text-zinc-400">Change password</div>
+          <div className="text-xs uppercase tracking-wide text-zinc-300">Change password</div>
           <input className="field" type="password" placeholder="current password" value={current}
                  onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
           <input className="field" type="password" placeholder="new password (10+ characters)"

@@ -33,6 +33,21 @@ SCHEMA: dict[str, tuple[Any, Validator]] = {
     # Whether the dashboard needs a sign-in. The settings pages always do.
     "dashboard_access":     ("login", _choice("login", "open")),
     "audit_retention_days": (365,     _int_between(7, 3650)),
+
+    # Monitoring thresholds. Defaults are the design's proposals and are meant to be tuned
+    # once there are real readings to tune against — every one of them is a judgement about
+    # how much movement is normal on this particular hardware.
+    #
+    # A drop in used space of this many percent, within the window below, is a flag.
+    "rule_volume_drop_pct":   (5,   _int_between(1, 100)),
+    "rule_volume_drop_hours": (1,   _int_between(1, 168)),
+    # A share losing this share of its files, or this many outright, is a flag. Both apply:
+    # whichever triggers first.
+    "rule_file_drop_pct":     (2,   _int_between(1, 100)),
+    "rule_file_drop_count":   (100, _int_between(1, 10_000_000)),
+    # How far two measurements of the same thing may differ before that itself is a flag.
+    # Not zero: `df` and the NAS's API are taken moments apart on a busy volume.
+    "rule_divergence_pct":    (2,   _int_between(1, 50)),
 }
 
 
