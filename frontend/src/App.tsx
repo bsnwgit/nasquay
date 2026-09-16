@@ -6,12 +6,15 @@ import Storage from "./pages/Storage";
 import Shares from "./pages/Shares";
 import Files from "./pages/Files";
 import Accounts from "./pages/Accounts";
+import Logs from "./pages/Logs";
+import System from "./pages/System";
+import Security from "./pages/Security";
 import Audit from "./pages/Audit";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import { LogoMark } from "./components/Logo";
 
-const PAGES = ["Home", "Storage", "Shares", "Files", "Accounts", "Audit", "Settings"] as const;
+const PAGES = ["Home", "Storage", "Shares", "Files", "Accounts", "Logs", "System", "Security", "Audit", "Settings"] as const;
 type Page = (typeof PAGES)[number];
 
 export default function App() {
@@ -104,6 +107,9 @@ export default function App() {
         {page === "Shares" && <Shares />}
         {page === "Files" && <Files />}
         {page === "Accounts" && <Accounts />}
+        {page === "Logs" && <Logs />}
+        {page === "System" && <System />}
+        {page === "Security" && <Security />}
         {page === "Audit" && <Audit />}
         {page === "Settings" && <Settings />}
       </main>

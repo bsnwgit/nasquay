@@ -7,13 +7,16 @@ import { when } from "../utils/format";
 // about and what happened the last time each was checked. Nothing here contacts a NAS,
 // so opening the app does not wake two boxes up.
 
-type Page = "Storage" | "Shares" | "Files" | "Accounts" | "Audit" | "Settings";
+type Page = "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Audit" | "Settings";
 
 const LINKS: { page: Page; label: string; blurb: string }[] = [
   { page: "Storage", label: "Storage", blurb: "Pools, volumes and disks" },
   { page: "Shares", label: "Shares", blurb: "Shared folders, permissions and NFS exports" },
   { page: "Files", label: "Files", blurb: "Browse what is actually on a share" },
   { page: "Accounts", label: "Accounts", blurb: "The NAS's own users, groups and sessions" },
+  { page: "Logs", label: "Logs", blurb: "The NAS's event and access logs" },
+  { page: "System", label: "System", blurb: "Firmware, load, temperatures and applications" },
+  { page: "Security", label: "Security", blurb: "What the NAS's own security applications report" },
   { page: "Audit", label: "Audit", blurb: "Every action NASQuay has taken" },
   { page: "Settings", label: "Settings", blurb: "NAS units, users, roles and the app itself" },
 ];
