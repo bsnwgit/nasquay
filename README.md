@@ -5,7 +5,7 @@ endpoint for AI tools — all behind one set of users, roles and per-action perm
 every action recorded.
 
 NASQuay drives QNAP's own MCP Assistant, which runs on each NAS, and uses SSH only for the
-few readings that has no tool for. Nothing extra is installed on a NAS.
+few readings it has no tool for. Nothing extra is installed on a NAS.
 
 ## What it does
 

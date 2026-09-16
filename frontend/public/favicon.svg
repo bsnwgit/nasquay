@@ -1,0 +1,11 @@
+<!-- The same mark as components/Logo.tsx. Hex here because a favicon gets no stylesheet:
+     amber-500 #f59e0b and sky-400 #38bdf8, the two colours the interface uses. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect x="4.5" y="4.5" width="23" height="23" fill="none" stroke="#f59e0b" stroke-width="3"/>
+  <path d="M21 21 L29.5 29.5" stroke="#f59e0b" stroke-width="3"/>
+  <g fill="#38bdf8">
+    <rect x="10" y="10.4" width="12" height="2.6" opacity="0.5"/>
+    <rect x="10" y="14.7" width="12" height="2.6"/>
+    <rect x="10" y="19" width="12" height="2.6" opacity="0.5"/>
+  </g>
+</svg>

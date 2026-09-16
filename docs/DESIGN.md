@@ -336,7 +336,8 @@ ssh_key: /opt/nasquay/secrets/id_ed25519
 
 - `install.sh` for Ubuntu 22.04 / 24.04: creates the service user, venv and directories under
   `/opt/nasquay`, builds the frontend, writes `config.yaml`, prompts for the first admin,
-  installs `nasquay-web.service` and `nasquay-worker.service`.
+  installs `nasquay-web.service`, and `nasquay-worker.service` once the worker itself is
+  built — today the installer writes the web unit only.
 - Reverse-proxy example with TLS for the host's own certificate.
 - Data, logs, secrets and `config.yaml` live beside the code and are preserved by upgrades.
 - `VERSION` file in the suite's `Major.Minor.Patch.CodeName[.Hotfix]` format.
