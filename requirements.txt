@@ -1,0 +1,18 @@
+# NASQuay Python dependencies
+
+# Web framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+# Data validation and startup config
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+pyyaml>=6.0.1
+
+# App database
+aiosqlite>=0.20.0
+
+# Auth and stored-secret encryption
+python-jose[cryptography]>=3.3.0   # JWT access and refresh tokens
+bcrypt>=4.1.0                      # Password hashing
+cryptography>=42.0.0               # Fernet encryption for secrets stored in the database

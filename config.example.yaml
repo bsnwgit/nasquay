@@ -1,0 +1,35 @@
+# NASQuay startup configuration.
+#
+# install.sh writes config.yaml from these settings with freshly generated keys.
+# config.yaml is never committed.
+#
+# Only what is needed before the database opens lives here. Everything else — NAS
+# units, users, roles, permissions, AI providers, routines, monitoring — is managed
+# in the app.
+
+# Address and port the web service listens on. Keep 127.0.0.1 and put a TLS reverse
+# proxy in front of it.
+host: 127.0.0.1
+port: 8770
+
+# Where NASQuay is installed. The paths below sit inside it.
+install_dir: /opt/nasquay
+db_path: /opt/nasquay/data/nasquay.db
+secrets_dir: /opt/nasquay/secrets
+
+# SSH key used to reach a NAS for the few readings its MCP server cannot give (df, du,
+# file counts). Its public half is authorised on each NAS.
+ssh_key_path: /opt/nasquay/secrets/id_ed25519
+
+# Signs session tokens. Generate with: openssl rand -hex 32
+secret_key: CHANGE_ME_generate_with_openssl_rand_hex_32
+
+# Encrypts secrets stored in the database. Generate with:
+#   python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+credential_key: CHANGE_ME_generate_with_fernet_generate_key
+
+# The address people use to reach NASQuay, e.g. https://nasquay.example.com
+public_url: ""
+
+# critical | error | warning | info | debug
+log_level: info

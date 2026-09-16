@@ -1,0 +1,21 @@
+# Runtime state that lives beside the code — never committed
+config.yaml
+config.yaml.*
+data/
+logs/
+secrets/
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Frontend build
+frontend/node_modules/
+frontend/dist/
+
+.DS_Store

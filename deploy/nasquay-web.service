@@ -1,0 +1,36 @@
+# Template — install.sh substitutes __INSTALL_DIR__, __LOG_DIR__, __SERVICE_USER__
+# and __SERVICE_GROUP__ before installing it to systemd.
+#
+# Host and port are not set here: app/server.py reads them from config.yaml at each
+# start, so changing the port needs only config.yaml and a restart.
+[Unit]
+Description=NASQuay web service
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_GROUP__
+WorkingDirectory=__INSTALL_DIR__
+
+Environment=NASQUAY_CONFIG=__INSTALL_DIR__/config.yaml
+Environment=NASQUAY_INSTALL_DIR=__INSTALL_DIR__
+
+ExecStart=__INSTALL_DIR__/venv/bin/python -m app.server
+
+# `always`, not `on-failure`: a clean SIGTERM is not a failure to systemd, and a
+# service that stops cleanly must still come back.
+Restart=always
+RestartSec=5
+
+StandardOutput=append:__LOG_DIR__/nasquay-web.log
+StandardError=append:__LOG_DIR__/nasquay-web.log
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
