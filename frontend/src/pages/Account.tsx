@@ -44,7 +44,7 @@ export default function Account({
   return (
     <div className="fixed inset-0 z-10 flex justify-end bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-sm h-full bg-zinc-950 border-l border-zinc-800 p-4 space-y-4 overflow-y-auto"
+        className="w-full max-w-sm h-full bg-zinc-950 border-l border-zinc-600 p-4 space-y-4 overflow-y-auto"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-3">

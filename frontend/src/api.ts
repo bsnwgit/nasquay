@@ -120,7 +120,9 @@ export type Target = {
   kind: string;
   ref: string;
   label: string;
+  parent_ref: string;
   enabled: boolean;
+  client_id: number | null;
   first_seen: string;
   last_seen: string;
   last_reading_at: string | null;
@@ -137,6 +139,16 @@ export type Reading = {
   backfilled: boolean;
 };
 
+export type Run = {
+  id: number;
+  tier: string;
+  status: string;
+  readings: number;
+  detail: string;
+  started_at: string;
+  finished_at: string | null;
+};
+
 export type Flag = {
   id: number;
   raised_at: string;
@@ -150,6 +162,31 @@ export type Flag = {
   cleared_at: string | null;
   acknowledged_at: string | null;
   acknowledged_by: string;
+};
+
+export type Client = {
+  id: number;
+  name: string;
+  address: string;
+  ssh_user: string;
+  ssh_port: number;
+  enabled: boolean;
+  last_checked_at: string | null;
+  last_check_ok: boolean | null;
+  last_check_detail: string;
+  key_name: string;
+  mounts: number;
+};
+
+export type Key = {
+  name: string;
+  public: string;
+  fingerprint: string;
+  comment: string;
+  created_at: string;
+  public_path: string;
+  managed: boolean;
+  in_use: number;
 };
 
 export type AddressChoice = { address: string; label: string };
@@ -233,7 +270,7 @@ export async function refresh(): Promise<Session | null> {
 }
 
 export const api = {
-  health: () => request<{ status: string; version: string }>("/api/health"),
+  health: () => request<{ status: string; version: string; timezone: string }>("/api/health"),
 
   login: async (username: string, password: string) => {
     const session = await request<Session>("/api/auth/login", {
@@ -356,6 +393,7 @@ export const api = {
       if (options.metric) query.set("metric", options.metric);
       return request<Reading[]>(`/api/monitoring/readings?${query.toString()}`);
     },
+    runs: (limit = 20) => request<Run[]>(`/api/monitoring/runs?limit=${limit}`),
     flags: (openOnly = true) =>
       request<Flag[]>(`/api/monitoring/flags?open_only=${openOnly}`),
     acknowledge: (id: number, clear: boolean) =>
@@ -375,6 +413,50 @@ export const api = {
     setNetwork: (host: string, port: number) =>
       request<Network>("/api/system/network", { method: "PATCH", body: { host, port } }),
     restart: () => request<{ status: string }>("/api/system/restart", { method: "POST" }),
+  },
+
+  keys: {
+    list: () => request<Key[]>("/api/keys"),
+    create: (body: { name: string; comment: string }) =>
+      request<Key>("/api/keys", { method: "POST", body }),
+    rename: (name: string, newName: string) =>
+      request<Key>(`/api/keys/${encodeURIComponent(name)}`, {
+        method: "PATCH",
+        body: { new_name: newName },
+      }),
+    remove: (name: string) =>
+      request<void>(`/api/keys/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  },
+
+  clients: {
+    list: () => request<Client[]>("/api/clients"),
+    create: (body: {
+      name: string;
+      address: string;
+      ssh_user: string;
+      ssh_port: number;
+      key_name: string;
+    }) =>
+      request<Client>("/api/clients", { method: "POST", body }),
+    update: (id: number, body: Record<string, unknown>) =>
+      request<Client>(`/api/clients/${id}`, { method: "PATCH", body }),
+    remove: (id: number) => request<void>(`/api/clients/${id}`, { method: "DELETE" }),
+    check: (id: number) =>
+      request<{ client: string; ok: boolean; detail: string }>(`/api/clients/${id}/check`, {
+        method: "POST",
+      }),
+    discoverMounts: (id: number) =>
+      request<{
+        client: string;
+        mounts: { source: string; path: string; type: string; watched: boolean }[];
+      }>(`/api/clients/${id}/mounts/discover`, { method: "POST" }),
+    removeMount: (targetId: number) =>
+      request<void>(`/api/clients/mounts/${targetId}`, { method: "DELETE" }),
+    addMount: (body: { client_id: number; nas_id: number; share: string; path: string }) =>
+      request<{ client: string; path: string; share: string }>("/api/clients/mounts", {
+        method: "POST",
+        body,
+      }),
   },
 
   settings: {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Flag, type Nas, type Reading, type Target } from "../api";
 import Busy from "../components/Busy";
+import Trouble from "../components/Trouble";
 import { bytes, when } from "../utils/format";
 import Help from "../components/Help";
 import Series from "../components/Series";
@@ -15,6 +16,8 @@ import Series from "../components/Series";
 // Bytes where the metric is bytes, a plain count otherwise.
 const value = (reading: Reading) => {
   if (reading.value === null) return "—";
+  // Stored as 1 or 0 because a rule compares numbers; read as words because a person does.
+  if (reading.metric === "client_mounted") return reading.value ? "mounted" : "not mounted";
   return reading.metric.endsWith("_bytes") ? bytes(reading.value) : reading.value.toLocaleString();
 };
 
@@ -24,7 +27,6 @@ const GROUPS: { kind: string; title: string; filled: string }[] = [
   { kind: "pool", title: "Pools", filled: "Read now" },
   { kind: "volume", title: "Volumes", filled: "Read now" },
   { kind: "share", title: "Shares", filled: "Deep read" },
-  { kind: "client_mount", title: "Client mounts", filled: "Read now" },
 ];
 
 export default function Monitoring() {
@@ -34,8 +36,16 @@ export default function Monitoring() {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [flags, setFlags] = useState<Flag[]>([]);
   const [busy, setBusy] = useState("");
-  // Which read is running, so its button shows as the active one.
   const [running, setRunning] = useState("");
+  // The read last asked for, per NAS. Kept in the browser so a reload does not forget
+  // which one you are looking at; it is a note about this viewer, nothing more.
+  const [lastRun, setLastRun] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem("nasquay.lastRead") ?? "{}");
+    } catch {
+      return {};
+    }
+  });
   // Which metric's history is open, and what came back for it.
   const [history, setHistory] = useState<{ key: string; readings: Reading[] } | null>(null);
   const [historyBusy, setHistoryBusy] = useState(false);
@@ -86,6 +96,15 @@ export default function Monitoring() {
         `${result.readings} readings` +
           (result.problems.length ? ` — ${result.problems.join(" · ")}` : ""),
       );
+      setLastRun((current) => {
+        const next = { ...current, [String(nas.id)]: tier };
+        try {
+          window.localStorage.setItem("nasquay.lastRead", JSON.stringify(next));
+        } catch {
+          // a browser refusing storage is not a reason to fail the read
+        }
+        return next;
+      });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Collection failed");
@@ -133,7 +152,10 @@ export default function Monitoring() {
   };
 
   const raised = flags.filter((flag) => flag.nas_id === selected);
-  const mine = targets.filter((target) => target.nas_id === selected);
+  // Client mounts live under Activity → Clients; this page is the NAS's own readings.
+  const mine = targets.filter(
+    (target) => target.nas_id === selected && target.kind !== "client_mount",
+  );
   const watching = mine.filter((target) => target.enabled);
   const ignored = mine.filter((target) => !target.enabled);
 
@@ -156,7 +178,7 @@ export default function Monitoring() {
             className={
               one.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {one.name}
@@ -168,14 +190,26 @@ export default function Monitoring() {
       {nas && (
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            className={running === "fast" ? "btn-active" : "btn"}
+            className={
+              running === "fast"
+                ? "btn-active"
+                : !running && lastRun[String(selected)] === "fast"
+                  ? "btn-last"
+                  : "btn"
+            }
             onClick={() => collect("fast")}
             disabled={!!busy}
           >
             Read now
           </button>
           <button
-            className={running === "slow" ? "btn-active" : "btn"}
+            className={
+              running === "slow"
+                ? "btn-active"
+                : !running && lastRun[String(selected)] === "slow"
+                  ? "btn-last"
+                  : "btn"
+            }
             onClick={() => collect("slow")}
             disabled={!!busy}
           >
@@ -237,6 +271,8 @@ export default function Monitoring() {
 
       {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
 
+      <Trouble only="nas" />
+
       {busy && <Busy label={busy} />}
 
       {!busy && nas && mine.length === 0 && (
@@ -297,7 +333,7 @@ export default function Monitoring() {
                                 "flex items-center gap-2 text-xs py-0.5 border-b text-left w-full " +
                                 (open
                                   ? "border-amber-500/40 text-amber-400"
-                                  : "border-zinc-800/40 hover:border-zinc-600")
+                                  : "border-zinc-600/40 hover:border-zinc-600")
                               }
                             >
                               <span className={open ? "flex-1" : "text-zinc-300 flex-1"}>
@@ -318,7 +354,7 @@ export default function Monitoring() {
                     )}
 
                     {history && history.key.startsWith(`${target.id}:`) && (
-                      <div className="border-t border-zinc-800 pt-3 space-y-2">
+                      <div className="border-t border-zinc-600 pt-3 space-y-2">
                         <div className="text-xs text-zinc-200">
                           {history.key.split(":")[1]} on {target.ref}
                         </div>
@@ -356,7 +392,7 @@ export default function Monitoring() {
               {ignored.map((target) => (
                 <div
                   key={target.id}
-                  className="flex items-center gap-2 text-xs py-1 border-b border-zinc-800/40"
+                  className="flex items-center gap-2 text-xs py-1 border-b border-zinc-600/40"
                 >
                   <span className="h-2 w-2 bg-zinc-700 shrink-0" />
                   <span className="text-zinc-300">{target.ref}</span>

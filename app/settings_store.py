@@ -5,6 +5,7 @@ means its default, and every value is validated before it is written.
 from __future__ import annotations
 
 import json
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any, Callable, Optional
 
 import aiosqlite
@@ -20,6 +21,23 @@ def _choice(*options: str) -> Validator:
     return check
 
 
+def _timezone(value: Any) -> str:
+    """An IANA zone name the host actually knows, or "UTC"."""
+    if not isinstance(value, str) or not value:
+        raise ValueError("must be a time zone name")
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValueError(f"unknown time zone: {value}") from exc
+    return value
+
+
+def _boolean(value: Any) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError("must be true or false")
+    return value
+
+
 def _int_between(low: int, high: int) -> Validator:
     def check(value: Any) -> Any:
         if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
@@ -32,7 +50,17 @@ def _int_between(low: int, high: int) -> Validator:
 SCHEMA: dict[str, tuple[Any, Validator]] = {
     # Whether the dashboard needs a sign-in. The settings pages always do.
     "dashboard_access":     ("login", _choice("login", "open")),
+    # Every time NASQuay records is stored in UTC and shown in this zone. Times that came
+    # from a NAS are that NAS's own local clock and are shown as it gave them.
+    "timezone":             ("UTC",   _timezone),
     "audit_retention_days": (365,     _int_between(7, 3650)),
+
+    # The schedule. Off by default: an app that starts walking a 28 TB share because it
+    # was installed is not a good guest.
+    "monitoring_enabled":       (False, _boolean),
+    "monitoring_fast_minutes":  (10,    _int_between(1, 1440)),
+    "monitoring_deep_hours":    (6,     _int_between(1, 168)),
+    "monitoring_client_minutes": (5,    _int_between(1, 1440)),
 
     # Monitoring thresholds. Defaults are the design's proposals and are meant to be tuned
     # once there are real readings to tune against — every one of them is a judgement about

@@ -4,11 +4,26 @@ import Users from "./Users";
 import Roles from "./Roles";
 import NasSettings from "./NasSettings";
 import MonitoringSettings from "./MonitoringSettings";
+import KeysSettings from "./KeysSettings";
 import Help from "../components/Help";
 
 // One settings section with tabs down the side, the way the suite's other apps do it.
 // Tools are not a tab: they belong to a NAS, so they live inside its row.
-const TABS = ["General", "NAS", "Monitoring", "Users", "Roles", "Network"] as const;
+// The host's own zones, so the list matches what the server will accept. A browser
+// without Intl.supportedValuesOf falls back to a short list plus whatever is already set.
+const ZONES: string[] = (() => {
+  const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
+  try {
+    const all = intl.supportedValuesOf?.("timeZone");
+    if (all?.length) return all;
+  } catch {
+    // fall through
+  }
+  return ["UTC", "America/New_York", "America/Chicago", "America/Denver",
+          "America/Los_Angeles", "Europe/London", "Europe/Paris", "Australia/Sydney"];
+})();
+
+const TABS = ["General", "NAS", "Monitoring", "SSH keys", "Users", "Roles", "Network"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -25,7 +40,7 @@ export default function Settings() {
             className={
               name === tab
                 ? "w-full text-left px-2 py-1 text-sm border border-amber-500 text-amber-400"
-                : "w-full text-left px-2 py-1 text-sm border border-transparent text-zinc-200 hover:border-zinc-700"
+                : "w-full text-left px-2 py-1 text-sm border border-transparent text-zinc-200 hover:border-zinc-600"
             }
           >
             {name}
@@ -37,6 +52,7 @@ export default function Settings() {
         {tab === "General" && <General />}
         {tab === "NAS" && <NasSettings />}
         {tab === "Monitoring" && <MonitoringSettings />}
+        {tab === "SSH keys" && <KeysSettings />}
         {tab === "Users" && <Users />}
         {tab === "Roles" && <Roles />}
         {tab === "Network" && <NetworkSettings />}
@@ -110,6 +126,25 @@ function General() {
         </label>
 
         <label className="block space-y-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-300">Time zone</span>
+          <select
+            className="field"
+            value={String(values.timezone ?? "UTC")}
+            onChange={(e) => save({ timezone: e.target.value })}
+          >
+            {ZONES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <span className="block text-xs text-zinc-300">
+            Every time NASQuay records is stored in UTC and shown in this zone. Times a NAS
+            reported are that NAS's own clock and are shown exactly as it gave them.
+          </span>
+        </label>
+
+        <label className="block space-y-1">
           <span className="text-xs uppercase tracking-wide text-zinc-300">
             Audit log retention (days)
           </span>
@@ -118,6 +153,7 @@ function General() {
             type="number"
             min={7}
             max={3650}
+            key={String(values.audit_retention_days ?? "")}
             defaultValue={Number(values.audit_retention_days ?? 365)}
             onBlur={(e) => save({ audit_retention_days: Number(e.target.value) })}
           />

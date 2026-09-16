@@ -174,7 +174,7 @@ export default function Logs() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -194,7 +194,7 @@ export default function Logs() {
               className={
                 one.key === kind.key
                   ? "px-3 py-1 border border-amber-500 text-amber-400"
-                  : "px-3 py-1 border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                  : "px-3 py-1 border border-zinc-600 text-zinc-200 hover:border-zinc-500"
               }
             >
               {one.label}
@@ -210,7 +210,7 @@ export default function Logs() {
               className={
                 one.mask === severity
                   ? "px-2 py-1 text-xs border border-amber-500 text-amber-400"
-                  : "px-2 py-1 text-xs border border-zinc-800 text-zinc-300 hover:border-zinc-600"
+                  : "px-2 py-1 text-xs border border-zinc-600 text-zinc-300 hover:border-zinc-600"
               }
             >
               {one.label}
@@ -226,7 +226,7 @@ export default function Logs() {
               className={
                 one.value === since
                   ? "px-2 py-1 text-xs border border-amber-500 text-amber-400"
-                  : "px-2 py-1 text-xs border border-zinc-800 text-zinc-300 hover:border-zinc-600"
+                  : "px-2 py-1 text-xs border border-zinc-600 text-zinc-300 hover:border-zinc-600"
               }
             >
               {one.label}

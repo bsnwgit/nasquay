@@ -98,7 +98,7 @@ export default function Roles() {
                 className={
                   r.id === selected
                     ? "w-full text-left px-2 py-1 border border-amber-500 text-amber-400"
-                    : "w-full text-left px-2 py-1 border border-transparent hover:border-zinc-700"
+                    : "w-full text-left px-2 py-1 border border-transparent hover:border-zinc-600"
                 }
               >
                 <div className="text-sm">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Nas } from "../api";
 import Busy from "../components/Busy";
-import { when } from "../utils/format";
+import { asGiven } from "../utils/format";
 import Help from "../components/Help";
 
 // What the NAS's own security apps report. Most of them are separate QNAP applications that
@@ -119,7 +119,7 @@ export default function Security() {
             className={
               nas.id === selected
                 ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
             }
           >
             {nas.name}
@@ -150,7 +150,7 @@ export default function Security() {
                   <span className="text-xs text-zinc-300">{app.status}</span>
                   {app.previous_operation && app.previous_operation !== "-" && (
                     <span className="text-xs text-zinc-300 ml-auto">
-                      last run {when(app.previous_operation)}
+                      last run {asGiven(app.previous_operation)}
                     </span>
                   )}
                 </div>
@@ -179,7 +179,7 @@ export default function Security() {
                   <div className="text-sm text-zinc-200">{malware.last_result ?? "—"}</div>
                   <div className="text-zinc-300">
                     {malware.status}
-                    {malware.last_scan_time_local && ` · ${when(malware.last_scan_time_local)}`}
+                    {malware.last_scan_time_local && ` · ${asGiven(malware.last_scan_time_local)}`}
                     {/* `enable` is the scheduled scan, not whether the app is installed. */}
                     <span className={malware.enable ? "text-zinc-300" : "text-zinc-300"}>
                       {malware.enable ? " · scheduled scanning on" : " · scheduled scanning off"}
@@ -202,7 +202,7 @@ export default function Security() {
                   className={
                     one === level
                       ? "px-3 py-1 text-sm border border-amber-500 text-amber-400"
-                      : "px-3 py-1 text-sm border border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                      : "px-3 py-1 text-sm border border-zinc-600 text-zinc-200 hover:border-zinc-500"
                   }
                 >
                   {one}

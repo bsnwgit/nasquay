@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app import crypto
+from app import keys
 from app.config import get_settings
 from app.connectors import qnap_mcp, ssh
 from app.dependencies import ActionCall, CurrentCaller, DbDep, require
@@ -31,7 +32,10 @@ class TargetOut(BaseModel):
     kind: str
     ref: str
     label: str
+    # For a share, the volume it lives on; for a mount, the share it should hold.
+    parent_ref: str = ""
     enabled: bool
+    client_id: Optional[int] = None
     first_seen: str
     last_seen: str
     last_reading_at: Optional[str] = None
@@ -69,7 +73,7 @@ class FlagOut(BaseModel):
 
 class CollectIn(BaseModel):
     nas_id: int = Field(ge=1)
-    tier: str = Field(default=collector.FAST, pattern="^(fast|slow)$")
+    tier: str = Field(default=collector.FAST, pattern="^(fast|slow|client)$")
 
 
 class CollectOut(BaseModel):
@@ -235,6 +239,7 @@ async def collect_now(
         _ssh_target(row),
         watched,
         body.tier,
+        get_settings().ssh_key_path,
     )
 
     await _write(db, outcome.readings)
@@ -251,6 +256,7 @@ async def collect_now(
     settings = await settings_store.get_all(db)
     firing = await rules.evaluate(db, body.nas_id, settings)
     counts = await rules.apply(db, body.nas_id, firing)
+    await rules.apply_global(db, await rules.collection_stale(db, settings))
 
     await call.done(
         target=f"nas:{row['name']}",
@@ -335,13 +341,29 @@ async def _watched(db, nas_id: int) -> list[collector.Watched]:
     """Enabled targets for one NAS, with a share attached to each volume so `df` has a
     path — QNAP's /share/<name> is a symlink onto the volume the share lives on."""
     async with db.execute(
-        "SELECT id, kind, ref, label, parent_ref FROM targets WHERE nas_id = ? AND enabled = 1",
+        """SELECT t.id, t.kind, t.ref, t.label, t.parent_ref,
+                  c.name AS client_name, c.address AS client_address,
+                  c.ssh_user AS client_user, c.ssh_port AS client_port,
+                  c.key_name AS client_key
+           FROM targets t LEFT JOIN clients c ON c.id = t.client_id AND c.enabled = 1
+           WHERE t.nas_id = ? AND t.enabled = 1""",
         (nas_id,),
     ) as cur:
         rows = await cur.fetchall()
 
-    watched = [collector.Watched(id=r["id"], kind=r["kind"], ref=r["ref"], label=r["label"],
-                                 parent_ref=r["parent_ref"]) for r in rows]
+    watched = [
+        collector.Watched(
+            id=r["id"], kind=r["kind"], ref=r["ref"], label=r["label"],
+            parent_ref=r["parent_ref"],
+            client=collector.ClientTarget(
+                name=r["client_name"], address=r["client_address"],
+                user=r["client_user"], port=r["client_port"],
+                key_path=(keys.path_for(r["client_key"]) if r["client_key"]
+                          else get_settings().ssh_key_path),
+            ) if r["client_name"] else None,
+        )
+        for r in rows
+    ]
     # A volume is measured through a share that actually lives on it. A volume with no
     # watched share gets no `df` reading rather than another volume's figures.
     for volume in (w for w in watched if w.kind == "volume"):
@@ -414,6 +436,38 @@ async def acknowledge(
     async with db.execute("SELECT * FROM flags WHERE id = ?", (flag_id,)) as cur:
         row = await cur.fetchone()
     return FlagOut(**dict(row))
+
+
+class RunOut(BaseModel):
+    id: int
+    tier: str
+    status: str
+    readings: int
+    detail: str
+    started_at: str
+    finished_at: Optional[str] = None
+
+
+@router.get("/runs", response_model=list[RunOut])
+async def list_runs(
+    db: DbDep,
+    call: Annotated[ActionCall, Depends(require("monitoring.read"))],
+    limit: int = Query(default=20, ge=1, le=200),
+):
+    """Recent collection runs, whether they worked or not.
+
+    A scheduled run that fails has nowhere else to be seen: nobody is watching when it
+    happens, and a monitor whose own failures are silent is the thing it was built to
+    prevent.
+    """
+    async with db.execute(
+        """SELECT id, tier, status, readings, detail, started_at, finished_at
+           FROM collection_runs ORDER BY id DESC LIMIT ?""",
+        (limit,),
+    ) as cur:
+        rows = await cur.fetchall()
+    await call.done(detail=f"{len(rows)} runs")
+    return [RunOut(**dict(row)) for row in rows]
 
 
 @router.get("/flags", response_model=list[FlagOut])
