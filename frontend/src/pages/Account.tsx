@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Help from "../components/Help";
 import { api, type Session, type User } from "../api";
 
 // Opened from the signed-in user's name in the header, rather than living as its own tab.
@@ -49,6 +50,11 @@ export default function Account({
       >
         <div className="flex items-center gap-3">
           <h1 className="text-sm uppercase tracking-wide text-zinc-300">Account</h1>
+          <Help>
+            <p>Your own NASQuay account — not an account on any NAS.</p>
+            <p>Your role decides what you may do, and it is set by an administrator rather than here. Everything you do passes the same permission check and lands in the audit log under your name.</p>
+            <p>Changing your password signs out your other sessions, so a password changed because it may have leaked actually ends the sessions that leaked it.</p>
+          </Help>
           <button className="btn ml-auto" onClick={onClose}>
             Close
           </button>

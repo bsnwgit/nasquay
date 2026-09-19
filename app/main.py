@@ -25,6 +25,7 @@ from app.api import auth     as auth_router
 from app.api import clients as clients_router
 from app.api import keys    as keys_router
 from app.api import monitoring as monitoring_router
+from app.api import notifications as notifications_router
 from app.api import nas      as nas_router
 from app.api import roles    as roles_router
 from app.api import run      as run_router
@@ -81,6 +82,7 @@ app.include_router(audit_router.router,    prefix="/api/audit",    tags=["audit"
 app.include_router(monitoring_router.router, prefix="/api/monitoring", tags=["monitoring"])
 app.include_router(clients_router.router,  prefix="/api/clients",    tags=["clients"])
 app.include_router(keys_router.router,     prefix="/api/keys",       tags=["keys"])
+app.include_router(notifications_router.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])
 app.include_router(tools_router.router,    prefix="/api/tools",    tags=["tools"])

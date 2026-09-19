@@ -25,7 +25,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from starlette.concurrency import run_in_threadpool
+
 import aiosqlite
+
+from app import notify
 
 VOLUME_DROP = "volume_drop"
 FILE_COUNT_DROP = "file_count_drop"
@@ -316,6 +320,40 @@ async def _df_vs_du(db, targets, nas_id: int, settings) -> list[Raised]:
     return out
 
 
+async def _announce(db: aiosqlite.Connection, sent: list[tuple[Raised, bool]]) -> None:
+    """Tell somebody, if anybody asked to be told.
+
+    Run after the flags are committed, and never allowed to fail the caller: a mail server
+    that has gone away must not stop readings being recorded.
+    """
+    if not sent:
+        return
+    async with db.execute("SELECT * FROM notifications WHERE id = 1") as cur:
+        row = await cur.fetchone()
+    if row is None:
+        return
+    settings = dict(row)
+
+    outcome = ""
+    for one, cleared in sent:
+        if not notify.wanted(settings, one.severity, cleared):
+            continue
+        message = notify.describe(one.rule, one.detail, cleared=cleared)
+        try:
+            ok, said = await run_in_threadpool(notify.deliver, settings, message)
+            outcome = said if ok else f"failed: {said}"
+        except Exception as exc:  # never let telling somebody break the thing being told
+            outcome = f"failed: {exc}"
+
+    if outcome:
+        await db.execute(
+            """UPDATE notifications SET last_sent_at = datetime('now'), last_result = ?
+               WHERE id = 1""",
+            (outcome[:500],),
+        )
+        await db.commit()
+
+
 async def apply(db: aiosqlite.Connection, nas_id: int, raised: list[Raised]) -> dict[str, int]:
     """Record what fired, and clear what no longer does.
 
@@ -324,6 +362,7 @@ async def apply(db: aiosqlite.Connection, nas_id: int, raised: list[Raised]) -> 
     """
     now_firing = {(one.rule, one.target_id) for one in raised}
     opened = 0
+    announce: list[tuple[Raised, bool]] = []
 
     for one in raised:
         async with db.execute(
@@ -341,6 +380,7 @@ async def apply(db: aiosqlite.Connection, nas_id: int, raised: list[Raised]) -> 
              one.previous),
         )
         opened += 1
+        announce.append((one, False))
 
     async with db.execute(
         """SELECT f.id, f.rule, f.target_id FROM flags f
@@ -356,8 +396,12 @@ async def apply(db: aiosqlite.Connection, nas_id: int, raised: list[Raised]) -> 
                 "UPDATE flags SET cleared_at = datetime('now') WHERE id = ?", (flag["id"],)
             )
             cleared += 1
+            announce.append((
+                Raised(flag["rule"], flag["target_id"], nas_id, "info", ""), True,
+            ))
 
     await db.commit()
+    await _announce(db, announce)
     return {"raised": opened, "cleared": cleared, "firing": len(raised)}
 
 
@@ -365,6 +409,7 @@ async def apply_global(db: aiosqlite.Connection, raised: list[Raised]) -> dict[s
     """The same as apply(), for rules that belong to no single NAS."""
     firing = {one.rule for one in raised}
     opened = 0
+    announce: list[tuple[Raised, bool]] = []
     for one in raised:
         async with db.execute(
             "SELECT id FROM flags WHERE rule = ? AND nas_id IS NULL AND cleared_at IS NULL",
@@ -378,6 +423,7 @@ async def apply_global(db: aiosqlite.Connection, raised: list[Raised]) -> dict[s
             (one.rule, one.severity, one.detail, one.value, one.previous),
         )
         opened += 1
+        announce.append((one, False))
 
     async with db.execute(
         "SELECT id, rule FROM flags WHERE nas_id IS NULL AND cleared_at IS NULL"
@@ -390,5 +436,7 @@ async def apply_global(db: aiosqlite.Connection, raised: list[Raised]) -> dict[s
                 "UPDATE flags SET cleared_at = datetime('now') WHERE id = ?", (flag["id"],)
             )
             cleared += 1
+            announce.append((Raised(flag["rule"], None, None, "info", ""), True))
     await db.commit()
+    await _announce(db, announce)
     return {"raised": opened, "cleared": cleared}

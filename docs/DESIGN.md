@@ -1,7 +1,12 @@
 # NASQuay — design
 
-**Status:** draft for review. Nothing here is built. Items marked **Decision** are listed at the
-end with their answers; open ones need an answer before the part they affect is written.
+**Status:** sections 1 to 5 are built and running — the core application, NAS connections, the
+web interface, and monitoring with its schedule, rules and notifications. Sections 6 to 10
+(embedded resonance, AI routines, the MCP endpoint, packaging and the website) are not.
+
+This document is the design, not the manual: where it describes something built, it says why
+it is that way. `ADMIN_GUIDE.md` and `USER_GUIDE.md` say how to use it. Items marked
+**Decision** are listed at the end with their answers.
 
 ## Purpose
 
@@ -220,14 +225,25 @@ All admin-only, and each section is itself a permission:
 
 Built in, using the same actions and gate (run as a system user with read-only permissions).
 
-- **Fast tier** (proposed every 10 min): pool status, volume capacity and free space via MCP;
-  `df -k` per volume via SSH; client mount presence and `df` if client views are configured.
-- **Slow tier** (proposed hourly for file counts, every 6 h for `du`): live file count per share,
-  `du -sk` per share.
+- **Fast tier** (built, default 10 min): pool status, and each volume's capacity, free and
+  used space via MCP, plus `df -k` per volume via SSH. A volume is measured through a share
+  that lives on it, matched by the volume id the NAS reports — `/share/<name>` is a symlink
+  onto its volume. A volume with no watched share gets no `df` and says so, rather than
+  borrowing another volume's figures.
+- **Slow tier** (built, default 6 h): `du -sk` and a live `find` per share, beside the NAS's
+  own cached counts. Both take a trailing slash, because `/share/<name>` is a symlink and
+  neither `du` nor `find` follows one without it.
+- **Client tier** (built, default 5 min): whether each configured mount is present on its
+  client, and that client's `df`. `mount` is consulted rather than `df` alone: `df` of an
+  unmounted path answers about the filesystem underneath and looks healthy.
+- Each tier keeps its own interval and its own run record. A run already in progress is never
+  started twice, and a run left mid-flight by a restart is closed off at startup rather than
+  left at "running".
 - **Backfill** from MCP usage history on first connection, so there is a baseline from day one.
 - Intervals are settings. **Decision 1:** defaults.
-- **Client view — Decision 5:** the host mounts shares itself, or runs `df` over SSH on an
-  existing client machine.
+- **Client view — decided:** NASQuay does not mount anything. It runs fixed read-only commands
+  over SSH on the machines that already mount a share. Each client is reached with its own key
+  or the install's, and each mount is an ordinary monitoring target.
 
 Readings are narrow rows (target, metric, value in integer bytes or counts, source, rounded,
 cached, backfilled). `df` and `du` run with `-k`, so no human-readable units are parsed.
@@ -243,7 +259,38 @@ Rules, thresholds set on the settings page and tuned after real readings:
 | `mcp_vs_df` | MCP free space differs from `df` beyond the calibrated margin |
 | `mount_missing` | a configured client mount is absent |
 | `pool_status_change` | a pool's status changes. **Decision 2:** also flag while it stays degraded? |
-| `worker_stale` | the worker has not completed a fast-tier run for 2× its interval |
+| `collection_stale` | no collection has completed for 2× the fast interval, and only asked while the schedule is on |
+
+All eight are built. Three properties hold across them:
+
+- **No rule trusts a degraded figure.** A reading marked `rounded`, `cached` or `backfilled`
+  is excluded from every comparison. "Exact" means the newest readings, and nothing at all if
+  any of them lost accuracy — not the newest readings that happen to be exact, which would
+  compare across a gap.
+- **A flag is raised once** and cleared when the condition stops, so it keeps the moment the
+  condition was first seen.
+- **A rule that cannot be evaluated is silent.** `df_vs_du` skips a volume unless every share
+  on it is watched and has an exact `du`; a partial sum is always short.
+
+## Notifications
+
+Three channels, each optional and independent: email, ntfy push, and a Slack incoming
+webhook. Any can be on without the others, and one failing never stops another. Sending runs
+in a worker thread with a short timeout and catches everything — a mail server that has gone
+away must not stop readings being taken.
+
+Because a flag is raised once and cleared once, there is no separate rate limit: one message
+per condition. Clearings are sent too. Severity thresholds are settings, with warnings off by
+default. The mail password, ntfy token and Slack webhook are encrypted at rest and never
+returned by the API.
+
+## SSH keys
+
+NASQuay generates and names keys, and hands out only public halves. No private key is read,
+returned or logged; its path is passed to `ssh` and that is the extent of it. A client may
+use its own key rather than the install's, so authorising NASQuay on a workstation need not
+give it the key the NAS units accept. Renaming a key repoints every client that named it, and
+rolls the files back if that fails.
 
 Flags appear on the dashboard. **Decision 3:** notifications beyond the page.
 

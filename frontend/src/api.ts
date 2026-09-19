@@ -189,6 +189,28 @@ export type Key = {
   in_use: number;
 };
 
+export type Notifications = {
+  on_error: boolean;
+  on_warning: boolean;
+  on_cleared: boolean;
+  email_enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: string;
+  smtp_user: string;
+  mail_from: string;
+  mail_to: string;
+  ntfy_enabled: boolean;
+  ntfy_server: string;
+  ntfy_topic: string;
+  slack_enabled: boolean;
+  has_smtp_password: boolean;
+  has_ntfy_token: boolean;
+  has_slack_webhook: boolean;
+  last_sent_at: string | null;
+  last_result: string;
+};
+
 export type AddressChoice = { address: string; label: string };
 
 export type Network = {
@@ -457,6 +479,14 @@ export const api = {
         method: "POST",
         body,
       }),
+  },
+
+  notifications: {
+    read: () => request<Notifications>("/api/notifications"),
+    update: (body: Record<string, unknown>) =>
+      request<Notifications>("/api/notifications", { method: "PATCH", body }),
+    test: () =>
+      request<{ ok: boolean; detail: string }>("/api/notifications/test", { method: "POST" }),
   },
 
   settings: {
