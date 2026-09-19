@@ -14,10 +14,15 @@ few readings it has no tool for. Nothing extra is installed on a NAS.
   admin can only be disabled if another admin remains.
 - **One gate.** The pages, the embedded assistant, routines and the MCP endpoint all call the
   same actions, so one permission check and one audit record cover every route in.
-- **Monitoring** of volumes and shares from several independent angles, to catch divergence
-  between what a NAS reports and what is actually there.
+- **Monitoring** of pools, volumes, shares and the machines that mount them, from several
+  independent angles, to catch divergence between what a NAS reports and what is actually
+  there. Collection runs on its own schedule and builds a history; a NAS's own usage history
+  can be imported so there is a baseline from the first day.
+- **Notifications** by email, ntfy push or Slack when a rule fires, and again when it clears.
 - **Safe by default.** Destructive actions need confirmation from a person, and unattended
   callers cannot perform them unless explicitly allowed.
+- **Guides.** `docs/ADMIN_GUIDE.md` and `docs/USER_GUIDE.md`, and a help button on every page
+  explaining what it shows and where its figures come from.
 
 ## Requirements
 

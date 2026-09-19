@@ -5,6 +5,7 @@ import Roles from "./Roles";
 import NasSettings from "./NasSettings";
 import MonitoringSettings from "./MonitoringSettings";
 import KeysSettings from "./KeysSettings";
+import NotificationSettings from "./NotificationSettings";
 import Help from "../components/Help";
 
 // One settings section with tabs down the side, the way the suite's other apps do it.
@@ -23,7 +24,7 @@ const ZONES: string[] = (() => {
           "America/Los_Angeles", "Europe/London", "Europe/Paris", "Australia/Sydney"];
 })();
 
-const TABS = ["General", "NAS", "Monitoring", "SSH keys", "Users", "Roles", "Network"] as const;
+const TABS = ["General", "NAS", "Monitoring", "Notifications", "SSH keys", "Users", "Roles", "Network"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -52,6 +53,7 @@ export default function Settings() {
         {tab === "General" && <General />}
         {tab === "NAS" && <NasSettings />}
         {tab === "Monitoring" && <MonitoringSettings />}
+        {tab === "Notifications" && <NotificationSettings />}
         {tab === "SSH keys" && <KeysSettings />}
         {tab === "Users" && <Users />}
         {tab === "Roles" && <Roles />}
@@ -107,7 +109,19 @@ function General() {
 
   return (
     <div className="space-y-4 max-w-xl">
-      <Heading title="General" note={note} error={error} />
+      <Heading
+        title="General"
+        note={note}
+        error={error}
+        help={
+          <>
+            <p>Settings that apply to NASQuay itself rather than to any NAS.</p>
+            <p><span className="text-zinc-200">Dashboard access</span> decides whether the dashboard needs a sign-in. The settings pages always do, whatever this says.</p>
+            <p><span className="text-zinc-200">Time zone</span> applies everywhere. Times NASQuay recorded are stored in UTC and shown in this zone; times a NAS reported are that NAS's own clock and are shown exactly as given, because converting them would claim an offset the NAS never stated.</p>
+            <p><span className="text-zinc-200">Audit retention</span> is how long the record of every action is kept.</p>
+          </>
+        }
+      />
 
       <div className="card space-y-4">
         <label className="block space-y-1">
@@ -216,7 +230,18 @@ function NetworkSettings() {
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <Heading title="Network" note={note} error={error} />
+      <Heading
+        title="Network"
+        note={note}
+        error={error}
+        help={
+          <>
+            <p>Where NASQuay listens. The address is chosen from what this host actually has rather than typed, so it cannot be set to something that does not exist.</p>
+            <p><span className="text-zinc-200">127.0.0.1</span> means only this machine can reach it, which is right when a reverse proxy sits in front and terminates TLS. <span className="text-zinc-200">0.0.0.0</span> means every interface.</p>
+            <p>A change here takes effect on the next restart, and if the new address is wrong you will need the host's own console to put it back.</p>
+          </>
+        }
+      />
 
       {!network && <div className="card text-sm text-zinc-300">Not available to your role.</div>}
 
@@ -276,15 +301,21 @@ function NetworkSettings() {
   );
 }
 
-function Heading({ title, note, error }: { title: string; note: string; error: string }) {
+function Heading({
+  title,
+  note,
+  error,
+  help,
+}: {
+  title: string;
+  note: string;
+  error: string;
+  help?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center gap-3">
       <h1 className="text-sm uppercase tracking-wide text-zinc-300">{title}</h1>
-        <Help>
-          <p>NASQuay's own configuration. Everything here is admin-only, and each section is itself a permission.</p>
-          <p><span className="text-zinc-200">NAS</span> holds the connections and their credentials. <span className="text-zinc-200">Users</span> and <span className="text-zinc-200">Roles</span> decide who may do what — the roles grid covers every action, including every tool a NAS offers.</p>
-          <p>Secrets are written but never read back: the API reports only whether one is set.</p>
-        </Help>
+      {help && <Help>{help}</Help>}
       {note && <span className="text-sm text-amber-400">{note}</span>}
       {error && <span className="text-sm text-red-400">{error}</span>}
     </div>
