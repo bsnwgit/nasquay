@@ -40,6 +40,7 @@ class Target:
     token: str = ""
     tls_mode: str = "pinned"          # pinned | system
     fingerprint: str = ""             # sha256 hex, lower case, no colons
+    ca_pem: str = ""                  # an uploaded certificate to verify against
     timeout: int = DEFAULT_TIMEOUT
     path: str = "/mcp"
 
@@ -62,6 +63,12 @@ def fingerprint_of(address: str, port: int, timeout: int = 10) -> str:
 
 def _context(target: Target) -> ssl.SSLContext:
     if target.tls_mode == "system":
+        # An uploaded certificate replaces the host's trust store rather than adding to
+        # it: the point of naming one is that this NAS is expected to present that
+        # authority's certificate and nothing else. The name is still checked, so the
+        # address NASQuay is given has to be one the certificate covers.
+        if target.ca_pem:
+            return ssl.create_default_context(cadata=target.ca_pem)
         return ssl.create_default_context()
     # Pinned: the fingerprint is checked against the presented certificate after the
     # handshake, which is what makes a self-signed certificate safe to use here.
@@ -92,6 +99,15 @@ class Connection:
                 target.address, target.port, context=_context(target), timeout=target.timeout
             )
             self._conn.connect()
+        except ssl.SSLCertVerificationError as exc:
+            # Distinct from being unreachable: the NAS answered, and what it presented was
+            # refused. Said plainly, because the fix is a setting and not the network.
+            raise McpError(
+                f"The certificate {target.address}:{target.port} presented was not accepted "
+                f"— {exc.verify_message or exc}. Check that the certificate chosen for this "
+                "NAS is the one that issued it and that it covers this address, or pin the "
+                "certificate instead."
+            ) from exc
         except (OSError, ssl.SSLError) as exc:
             raise McpError(f"Could not reach {target.address}:{target.port} — {exc}") from exc
 

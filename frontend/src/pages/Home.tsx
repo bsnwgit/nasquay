@@ -8,7 +8,7 @@ import Help from "../components/Help";
 // about and what happened the last time each was checked. Nothing here contacts a NAS,
 // so opening the app does not wake two boxes up.
 
-type Page = "Dashboard" | "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Monitoring" | "Audit" | "Settings";
+type Page = "Dashboard" | "Storage" | "Shares" | "Files" | "Accounts" | "Logs" | "System" | "Security" | "Monitoring" | "ClientMonitoring" | "Audit" | "Settings";
 
 const LINKS: { page: Page; label: string; blurb: string }[] = [
   { page: "Dashboard", label: "Dashboard", blurb: "Whether anything is wrong, on one screen" },
@@ -109,6 +109,27 @@ export default function Home({
                   "Never checked"
                 )}
               </div>
+
+              {/* Presentation only: following this leaves NASQuay, and nothing about the
+                  target is fetched, checked or proxied here.
+
+                  With no administration link recorded, this falls back to the NAS's own
+                  address over HTTPS — where QTS answers unless it was moved. That is a
+                  guess, and the field in Settings → NAS is what makes it right. */}
+              <a
+                href={nas.admin_url || `https://${nas.address}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                title={
+                  nas.admin_url
+                    ? nas.admin_url
+                    : `https://${nas.address} — no administration link is recorded for this NAS, ` +
+                      "so this is its own address. Set one in Settings → NAS."
+                }
+                className="block text-xs text-amber-400 hover:underline"
+              >
+                Open {nas.name}'s own interface ↗
+              </a>
             </div>
           ))}
         </div>

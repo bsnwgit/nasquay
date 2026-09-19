@@ -13,16 +13,6 @@ belong in `DESIGN.md`.
   `scheduler.start()` is called from, not what it does. Jobs and routines will want the
   separate process for real, since neither should share a lifetime with the web service.
 
-## Home page
-
-- **A link to each NAS's own interface.** Record a URL, or an address and port, against each
-  NAS and show it on the home page as a link that opens in a new tab. NASQuay already holds
-  the address it talks MCP to, but that is the MCP port and not the administration interface,
-  so the link is its own field rather than something to derive — a NAS may be behind a proxy,
-  on a different port, or reached by a name NASQuay never uses.
-  It is presentation only: following the link leaves NASQuay, and nothing about the target is
-  checked, fetched or proxied.
-
 ## NAS settings
 
 - **Choose which shares are shown.** Per NAS, an admin picks which shared folders appear in

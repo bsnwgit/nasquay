@@ -92,7 +92,8 @@ class CollectOut(BaseModel):
 async def _nas_row(db, nas_id: int):
     async with db.execute(
         """SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint, mcp_token,
-                  ssh_user, ssh_port, enabled
+                  ssh_user, ssh_port, enabled,
+                  (SELECT pem FROM certificates WHERE certificates.id = nas.tls_cert_id) AS tls_ca_pem
            FROM nas WHERE id = ?""",
         (nas_id,),
     ) as cur:
@@ -103,6 +104,7 @@ def _mcp_target(row, token: str) -> qnap_mcp.Target:
     return qnap_mcp.Target(
         address=row["address"], port=row["mcp_port"], token=token,
         tls_mode=row["tls_mode"], fingerprint=row["tls_fingerprint"],
+        ca_pem=row["tls_ca_pem"] or "",
     )
 
 

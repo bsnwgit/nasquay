@@ -21,6 +21,7 @@ from app.version import get_version
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 from app.api import audit    as audit_router
+from app.api import certificates as certificates_router
 from app.api import auth     as auth_router
 from app.api import clients as clients_router
 from app.api import keys    as keys_router
@@ -82,6 +83,7 @@ app.include_router(audit_router.router,    prefix="/api/audit",    tags=["audit"
 app.include_router(monitoring_router.router, prefix="/api/monitoring", tags=["monitoring"])
 app.include_router(clients_router.router,  prefix="/api/clients",    tags=["clients"])
 app.include_router(keys_router.router,     prefix="/api/keys",       tags=["keys"])
+app.include_router(certificates_router.router, prefix="/api/certificates", tags=["certificates"])
 app.include_router(notifications_router.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])

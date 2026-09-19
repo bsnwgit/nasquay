@@ -5,6 +5,7 @@ import Roles from "./Roles";
 import NasSettings from "./NasSettings";
 import MonitoringSettings from "./MonitoringSettings";
 import KeysSettings from "./KeysSettings";
+import CertSettings from "./CertSettings";
 import NotificationSettings from "./NotificationSettings";
 import Help from "../components/Help";
 
@@ -24,7 +25,7 @@ const ZONES: string[] = (() => {
           "America/Los_Angeles", "Europe/London", "Europe/Paris", "Australia/Sydney"];
 })();
 
-const TABS = ["General", "NAS", "Monitoring", "Notifications", "SSH keys", "Users", "Roles", "Network"] as const;
+const TABS = ["General", "NAS", "Monitoring", "Notifications", "Certificates", "SSH keys", "Users", "Roles", "Network"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -54,6 +55,7 @@ export default function Settings() {
         {tab === "NAS" && <NasSettings />}
         {tab === "Monitoring" && <MonitoringSettings />}
         {tab === "Notifications" && <NotificationSettings />}
+        {tab === "Certificates" && <CertSettings />}
         {tab === "SSH keys" && <KeysSettings />}
         {tab === "Users" && <Users />}
         {tab === "Roles" && <Roles />}

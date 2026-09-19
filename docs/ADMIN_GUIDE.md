@@ -55,14 +55,32 @@ On the NAS itself, first: install **MCP Assistant** from App Center (QTS 5.2+ or
 h5.2+), and create a **Token** credential in it. NASQuay speaks streamable HTTP to it over
 HTTPS, normally port 8443.
 
-Adding a NAS is two steps on purpose:
+A NAS is verified one of three ways, chosen under **Certificate** on its settings:
 
-1. **Read the certificate** it presents, and look at the fingerprint.
-2. **Save it** with the token.
+- **Pinned** — the default. Adding a NAS is two steps on purpose: **read the certificate**
+  it presents and look at the fingerprint, then **save it** with the token. From then on
+  that exact certificate is required. A NAS presenting a different one is refused rather
+  than trusted, and says so — if the certificate was genuinely replaced, accept the new one
+  here. This is the right choice for the self-signed certificate a QNAP ships with.
+- **An uploaded certificate** — upload the authority that issued your certificates under
+  **Settings → Certificates**, then choose it here. The chain *and* the name are checked,
+  and one upload covers every NAS that authority issued for. Because the name is checked,
+  the address recorded for the NAS must be one the certificate covers: a certificate issued
+  for a hostname will not verify a NAS reached by its IP address.
+- **The host's certificate store** — for a NAS holding a certificate from a public
+  authority.
 
-From then on that exact certificate is required. A NAS presenting a different one is
-refused rather than trusted, and says so — if the certificate was genuinely replaced, accept
-the new one here.
+### Certificates
+
+**Settings → Certificates.** Upload a `.crt`, `.pem` or `.cer` file, or paste the PEM text;
+an intermediate and a root can go in together. NASQuay shows what the certificate says
+about itself — subject, issuer, validity and SHA-256 fingerprint — before anything is
+verified against it, and marks one that has expired.
+
+Nothing here is a credential: a certificate is the public half by definition, so unlike a
+token it goes in and comes back out. A file containing a **private key is refused** —
+NASQuay never needs the private half of anything a NAS presents. A certificate a NAS is
+still verified against cannot be deleted.
 
 Tokens go in but never come out. The API reports only whether one is set, and leaving the
 field empty when editing keeps the stored token, so saving the form does not wipe it.
@@ -71,6 +89,13 @@ field empty when editing keeps the stored token, so saving the form does not wip
 share, a live file count, and `df`. Give NASQuay an account on the NAS and authorise its
 public key (see *SSH keys* below). Only fixed commands are ever run — `df -k`, `du -sk` and
 `find` — and there is no path by which a free-form command can be sent to a NAS.
+
+**The administration interface** is a separate field. Record the address of the NAS's own
+web interface — `https://10.0.0.10:8080`, or whatever name and port it answers to — and the
+home page shows it as a link that opens in a new tab. It is not derived from the address
+NASQuay talks MCP to, because that is the MCP port and a NAS may also sit behind a proxy or
+answer to another name. Nothing about the target is fetched, checked or proxied: following
+the link simply leaves NASQuay. Emptying the field removes the link.
 
 QNAP's own requirements catch people out here: key login needs home folders enabled in
 Control Panel → Privilege → Users, `~/.ssh` at mode 700, `authorized_keys` at 600, and a

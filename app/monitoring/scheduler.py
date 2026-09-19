@@ -99,7 +99,8 @@ async def run_tier(db, tier: str) -> dict[str, Any]:
 
     async with db.execute(
         """SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint, mcp_token,
-                  ssh_user, ssh_port
+                  ssh_user, ssh_port,
+                  (SELECT pem FROM certificates WHERE certificates.id = nas.tls_cert_id) AS tls_ca_pem
            FROM nas WHERE enabled = 1"""
     ) as cur:
         units = list(await cur.fetchall())
@@ -116,6 +117,7 @@ async def run_tier(db, tier: str) -> dict[str, Any]:
         mcp = qnap_mcp.Target(
             address=row["address"], port=row["mcp_port"], token=token,
             tls_mode=row["tls_mode"], fingerprint=row["tls_fingerprint"],
+            ca_pem=row["tls_ca_pem"] or "",
         ) if token else None
         sshing = ssh.Target(
             address=row["address"], user=row["ssh_user"], port=row["ssh_port"],
