@@ -73,9 +73,12 @@ export type Nas = {
   mcp_port: number;
   tls_mode: string;
   tls_fingerprint: string;
+  tls_cert_id: number | null;
+  tls_cert_name: string | null;
   has_token: boolean;
   ssh_user: string;
   ssh_port: number;
+  admin_url: string;
   enabled: boolean;
   last_checked_at: string | null;
   last_check_ok: boolean | null;
@@ -186,6 +189,20 @@ export type Key = {
   created_at: string;
   public_path: string;
   managed: boolean;
+  in_use: number;
+};
+
+export type Certificate = {
+  id: number;
+  name: string;
+  pem: string;
+  fingerprint: string;
+  subject: string;
+  issuer: string;
+  not_before: string;
+  not_after: string;
+  is_ca: boolean;
+  added_at: string;
   in_use: number;
 };
 
@@ -372,9 +389,11 @@ export const api = {
       mcp_port: number;
       tls_mode: string;
       tls_fingerprint: string;
+      tls_cert_id: number | null;
       mcp_token: string;
       ssh_user: string;
       ssh_port: number;
+      admin_url: string;
     }) => request<Nas>("/api/nas", { method: "POST", body }),
     update: (id: number, body: Record<string, unknown>) =>
       request<Nas>(`/api/nas/${id}`, { method: "PATCH", body }),
@@ -448,6 +467,13 @@ export const api = {
       }),
     remove: (name: string) =>
       request<void>(`/api/keys/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  },
+
+  certificates: {
+    list: () => request<Certificate[]>("/api/certificates"),
+    add: (body: { name: string; pem: string }) =>
+      request<Certificate>("/api/certificates", { method: "POST", body }),
+    remove: (id: number) => request<void>(`/api/certificates/${id}`, { method: "DELETE" }),
   },
 
   clients: {

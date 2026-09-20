@@ -61,7 +61,8 @@ async def run_tool(body: RunIn, db: DbDep, caller: CurrentCaller):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That tool is not known to NASQuay")
 
     async with db.execute(
-        """SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint, mcp_token, enabled
+        """SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint, mcp_token, enabled,
+                  (SELECT pem FROM certificates WHERE certificates.id = nas.tls_cert_id) AS tls_ca_pem
            FROM nas WHERE id = ?""",
         (body.nas_id,),
     ) as cur:
@@ -119,6 +120,7 @@ async def run_tool(body: RunIn, db: DbDep, caller: CurrentCaller):
             qnap_mcp.Target(
                 address=nas["address"], port=nas["mcp_port"], token=token,
                 tls_mode=nas["tls_mode"], fingerprint=nas["tls_fingerprint"],
+                ca_pem=nas["tls_ca_pem"] or "",
             )
         )
         try:

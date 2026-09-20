@@ -28,7 +28,7 @@ Five groups along the top, each opening on an overview with its own list on the 
 
 | Group | Holds |
 |---|---|
-| **Home** | the NAS units NASQuay knows, and when each was last checked |
+| **Home** | the NAS units NASQuay knows, when each was last checked, and a link to each one's own interface where an administrator has recorded it |
 | **Storage** | Overview, Pools, Shares, Files |
 | **Activity** | Dashboard, NAS, Clients, Logs, Audit |
 | **System** | Overview, Accounts, System, Security |

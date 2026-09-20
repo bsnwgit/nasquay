@@ -12,7 +12,7 @@ import sqlite3
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from app import crypto
@@ -23,11 +23,26 @@ from app.dependencies import ActionCall, DbDep, require
 router = APIRouter()
 
 _NAS_SELECT = """
-    SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint,
-           length(mcp_token) > 0 AS has_token, ssh_user, ssh_port, enabled,
+    SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint, tls_cert_id,
+           (SELECT name FROM certificates WHERE certificates.id = nas.tls_cert_id) AS tls_cert_name,
+           (SELECT pem  FROM certificates WHERE certificates.id = nas.tls_cert_id) AS tls_ca_pem,
+           length(mcp_token) > 0 AS has_token, ssh_user, ssh_port, admin_url, enabled,
            last_checked_at, last_check_ok, last_check_detail, created_at, updated_at
     FROM nas
 """
+
+
+def _admin_url(value: str) -> str:
+    """Accept only a web address, so what the browser is handed is a place to go.
+
+    The link is rendered as an href the moment it is stored, which makes anything else —
+    javascript:, data: — a way to run script in someone else's session rather than a
+    mistyped setting.
+    """
+    url = value.strip()
+    if url and not url.lower().startswith(("http://", "https://")):
+        raise ValueError("The administration link must start with http:// or https://")
+    return url
 
 
 class NasOut(BaseModel):
@@ -37,9 +52,12 @@ class NasOut(BaseModel):
     mcp_port: int
     tls_mode: str
     tls_fingerprint: str
+    tls_cert_id: Optional[int] = None
+    tls_cert_name: Optional[str] = None
     has_token: bool
     ssh_user: str
     ssh_port: int
+    admin_url: str = ""
     enabled: bool
     last_checked_at: Optional[str] = None
     last_check_ok: Optional[bool] = None
@@ -54,9 +72,18 @@ class NasCreate(BaseModel):
     mcp_port: int = Field(default=8443, ge=1, le=65535)
     tls_mode: str = Field(default="pinned", pattern="^(pinned|system)$")
     tls_fingerprint: str = Field(default="", max_length=128)
+    # With tls_mode "system": an uploaded certificate to verify against, or none for the
+    # host's own trust store.
+    tls_cert_id: Optional[int] = None
     mcp_token: str = Field(default="", max_length=512)
     ssh_user: str = Field(default="", max_length=64)
     ssh_port: int = Field(default=22, ge=1, le=65535)
+    admin_url: str = Field(default="", max_length=255)
+
+    @field_validator("admin_url")
+    @classmethod
+    def _check_admin_url(cls, value: str) -> str:
+        return _admin_url(value)
 
 
 class NasUpdate(BaseModel):
@@ -65,11 +92,21 @@ class NasUpdate(BaseModel):
     mcp_port: Optional[int] = Field(default=None, ge=1, le=65535)
     tls_mode: Optional[str] = Field(default=None, pattern="^(pinned|system)$")
     tls_fingerprint: Optional[str] = Field(default=None, max_length=128)
+    # 0 clears the certificate and falls back to the host's trust store; leaving it out
+    # keeps what is stored.
+    tls_cert_id: Optional[int] = None
     # "" leaves the stored token alone; a value replaces it.
     mcp_token: Optional[str] = Field(default=None, max_length=512)
     ssh_user: Optional[str] = Field(default=None, max_length=64)
     ssh_port: Optional[int] = Field(default=None, ge=1, le=65535)
+    # "" clears the link; leaving it out keeps what is stored.
+    admin_url: Optional[str] = Field(default=None, max_length=255)
     enabled: Optional[bool] = None
+
+    @field_validator("admin_url")
+    @classmethod
+    def _check_admin_url(cls, value: Optional[str]) -> Optional[str]:
+        return value if value is None else _admin_url(value)
 
 
 class FingerprintIn(BaseModel):
@@ -110,6 +147,15 @@ async def _fetch(db, nas_id: int):
         return await cur.fetchone()
 
 
+async def _certificate_missing(db, cert_id: Optional[int]) -> bool:
+    """Checked here rather than left to the foreign key, whose error says only that
+    something conflicted and would be reported as a duplicate name."""
+    if not cert_id:
+        return False
+    async with db.execute("SELECT 1 FROM certificates WHERE id = ?", (cert_id,)) as cur:
+        return await cur.fetchone() is None
+
+
 async def _token(db, nas_id: int) -> str:
     async with db.execute("SELECT mcp_token FROM nas WHERE id = ?", (nas_id,)) as cur:
         row = await cur.fetchone()
@@ -123,6 +169,7 @@ def _mcp_target(row, token: str) -> qnap_mcp.Target:
         token=token,
         tls_mode=row["tls_mode"],
         fingerprint=row["tls_fingerprint"],
+        ca_pem=row["tls_ca_pem"] or "",
     )
 
 
@@ -160,17 +207,22 @@ async def create_nas(
         message = "A pinned certificate needs its fingerprint — read it from the NAS first"
         await call.failed(message, params=params)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, message)
+    if await _certificate_missing(db, body.tls_cert_id):
+        message = "That certificate no longer exists"
+        await call.failed(message, params=params)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, message)
 
     try:
         cur = await db.execute(
-            """INSERT INTO nas (name, address, mcp_port, tls_mode, tls_fingerprint, mcp_token,
-                                ssh_user, ssh_port)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO nas (name, address, mcp_port, tls_mode, tls_fingerprint, tls_cert_id,
+                                mcp_token, ssh_user, ssh_port, admin_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 body.name.strip(), body.address.strip(), body.mcp_port, body.tls_mode,
                 body.tls_fingerprint.replace(":", "").lower().strip(),
+                body.tls_cert_id or None,
                 crypto.encrypt_str(body.mcp_token) if body.mcp_token else "",
-                body.ssh_user.strip(), body.ssh_port,
+                body.ssh_user.strip(), body.ssh_port, body.admin_url,
             ),
         )
         await db.commit()
@@ -202,7 +254,7 @@ async def update_nas(
     sets: list[str] = []
     values: list[Any] = []
     for column in ("name", "address", "mcp_port", "tls_mode", "tls_fingerprint", "ssh_user",
-                   "ssh_port", "enabled"):
+                   "ssh_port", "admin_url", "enabled"):
         if changes.get(column) is not None:
             value = changes[column]
             if column == "tls_fingerprint":
@@ -213,6 +265,15 @@ async def update_nas(
                 value = value.strip()
             sets.append(f"{column} = ?")
             values.append(value)
+
+    # 0 is how the form says "no certificate"; None means the field was not sent at all,
+    # which leaves the stored choice alone.
+    if changes.get("tls_cert_id") is not None:
+        if await _certificate_missing(db, changes["tls_cert_id"]):
+            await call.failed("certificate not found", target=target)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "That certificate no longer exists")
+        sets.append("tls_cert_id = ?")
+        values.append(changes["tls_cert_id"] or None)
 
     # An empty token means "leave the stored one alone", so it can never be cleared by a
     # form that simply did not show it.

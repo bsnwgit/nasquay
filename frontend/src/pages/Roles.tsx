@@ -191,7 +191,14 @@ export default function Roles() {
 
               {byCategory.map(([category, list]) => (
                 <div key={category} className="space-y-1">
-                  <div className="text-xs uppercase tracking-wide text-zinc-300">{category}</div>
+                  {/* Same treatment as the tool categories on the NAS page: a category is
+                      a heading, not another line of grey. */}
+                  <div className="pt-3 flex items-center gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-widest text-sky-300 bg-zinc-800 border-l-2 border-sky-400 px-2 py-1">
+                      {category}
+                    </span>
+                    <span className="h-px flex-1 bg-zinc-700" />
+                  </div>
                   {list.map((action) => (
                     <label
                       key={action.id}
