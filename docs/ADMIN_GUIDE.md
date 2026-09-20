@@ -31,7 +31,19 @@ It asks three things:
 
 It creates a Python virtual environment, builds the interface, writes `config.yaml`,
 generates an SSH key and an encryption key under `secrets/`, applies the database
-migrations and installs the `nasquay-web` systemd unit.
+migrations and installs two systemd units:
+
+- **`nasquay-web`** — the API and the interface. It owns the database schema: migrations run
+  when it starts.
+- **`nasquay-worker`** — the monitoring schedule, and in time the jobs and routines. It is a
+  process of its own so that a collection walking a large share is not cut short every time
+  the interface is restarted, and it applies no migrations: it waits for the web service to
+  have the schema ready.
+
+Nothing collects on a schedule if the worker is not running — `sudo systemctl status
+nasquay-worker`. An install that cannot run a second service can set `collection_in_web:
+true` in `config.yaml`, and the web process keeps the schedule instead; the startup log
+line says which of the two is doing it.
 
 **Put TLS in front of it.** NASQuay speaks plain HTTP and expects a reverse proxy to
 terminate TLS. Sign-in sends a password; do not expose it directly.
@@ -100,6 +112,21 @@ the link simply leaves NASQuay. Emptying the field removes the link.
 QNAP's own requirements catch people out here: key login needs home folders enabled in
 Control Panel → Privilege → Users, `~/.ssh` at mode 700, `authorized_keys` at 600, and a
 home directory that is not group- or world-writable.
+
+### What a NAS shows
+
+**Settings → NAS**, expanding a unit, under **What is shown**. Untick a share and it is left
+out of the Shares page and of the top level of Files. A folder anywhere in the tree can be
+hidden by its path — `/Series-B/@Recycle` — and the Files page offers **hide** on each folder
+row, which is the same setting written from where you noticed it.
+
+Folder names to hide in *every* share on *every* NAS go in **Settings → General → Folders
+hidden everywhere**, which starts with QTS's own housekeeping directories.
+
+**Hiding is presentation, not permission.** It grants nothing and withholds nothing: a role
+that may not read a share still cannot, hidden or not, and a role that may read one still
+can. The listings say how many entries were left out, so a hidden share is never mistaken
+for one that failed to read.
 
 ### Tools
 
@@ -266,7 +293,8 @@ it. **Send a test** delivers on every enabled channel now and reports exactly wh
   fail while nobody is watching; this is where they surface.
 - **Settings → General** shows whether a saved change is waiting for a restart.
 - **The audit log** records every action, including refusals and why they were refused.
-- The service log is `logs/nasquay-web.log` in the install directory.
+- The service logs are `logs/nasquay-web.log` and `logs/nasquay-worker.log` in the install
+  directory.
 
 A reading marked **cached** came from a figure the NAS computed earlier and hands back
 unchanged. One marked **rounded** lost accuracy before NASQuay saw it. Neither is trusted by

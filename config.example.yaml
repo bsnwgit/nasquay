@@ -33,3 +33,8 @@ public_url: ""
 
 # critical | error | warning | info | debug
 log_level: info
+
+# The monitoring schedule normally runs in the nasquay-worker service, so a long
+# collection is not cut short whenever the web service restarts. Set this true only for
+# an install with no worker, and the web process keeps the schedule itself.
+collection_in_web: false

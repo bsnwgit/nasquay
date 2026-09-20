@@ -100,7 +100,7 @@ export default function App() {
       case "Shares":
         return <Shares />;
       case "Files":
-        return <Files />;
+        return <Files isAdmin={session.is_admin} />;
       case "Accounts":
         return <Accounts />;
       case "Logs":

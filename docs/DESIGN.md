@@ -1,7 +1,8 @@
 # NASQuay — design
 
 **Status:** sections 1 to 5 are built and running — the core application, NAS connections, the
-web interface, and monitoring with its schedule, rules and notifications. Sections 6 to 10
+web interface, and monitoring with its schedule, rules and notifications, the last in the
+worker process the design describes. Sections 6 to 10
 (embedded resonance, AI routines, the MCP endpoint, packaging and the website) are not.
 
 This document is the design, not the manual: where it describes something built, it says why
@@ -403,8 +404,7 @@ ssh_key: /opt/nasquay/secrets/id_ed25519
 
 - `install.sh` for Ubuntu 22.04 / 24.04: creates the service user, venv and directories under
   `/opt/nasquay`, builds the frontend, writes `config.yaml`, prompts for the first admin,
-  installs `nasquay-web.service`, and `nasquay-worker.service` once the worker itself is
-  built — today the installer writes the web unit only.
+  and installs `nasquay-web.service` and `nasquay-worker.service`.
 - Reverse-proxy example with TLS for the host's own certificate.
 - Data, logs, secrets and `config.yaml` live beside the code and are preserved by upgrades.
 - `VERSION` file in the suite's `Major.Minor.Patch.CodeName[.Hotfix]` format.

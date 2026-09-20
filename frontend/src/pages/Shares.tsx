@@ -83,6 +83,9 @@ export default function Shares() {
   const [nfs, setNfs] = useState<Record<string, NfsState>>({});
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  // Shares an administrator has chosen not to list. Said out loud: a page that quietly
+  // omits a share is indistinguishable from one that failed to read it.
+  const [hiddenCount, setHiddenCount] = useState(0);
 
   useEffect(() => {
     api.nas
@@ -108,6 +111,7 @@ export default function Shares() {
       .run(selected, "list_shared_folder", { detailed: true })
       .then((result) => {
         const data = (result.json_result ?? {}) as ShareList;
+        setHiddenCount(result.hidden);
         setMeta(data);
         setShares(data.sharedfolders ?? []);
       })
@@ -201,6 +205,7 @@ export default function Shares() {
             {meta.total} shares
             {meta.acl_enabled ? " · ACLs on" : ""}
             {meta.has_more ? " · list truncated by the NAS" : ""}
+            {hiddenCount > 0 ? ` · ${hiddenCount} hidden by your settings` : ""}
           </span>
         )}
         {error && <span className="text-sm text-red-400">{error}</span>}

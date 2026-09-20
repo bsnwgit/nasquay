@@ -1,0 +1,43 @@
+# Template — install.sh substitutes __INSTALL_DIR__, __LOG_DIR__, __SERVICE_USER__
+# and __SERVICE_GROUP__ before installing it to systemd.
+#
+# The worker runs what must not share a lifetime with a web server: the monitoring
+# schedule now, jobs and routines later. It reads the same config.yaml and the same
+# database, and applies no migrations of its own — the web service owns the schema.
+[Unit]
+Description=NASQuay worker
+After=network.target nasquay-web.service
+# Wants, not Requires: the worker waits for the schema by itself, and a web service
+# stopped for maintenance should not take collection down with it.
+Wants=nasquay-web.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_GROUP__
+WorkingDirectory=__INSTALL_DIR__
+
+Environment=NASQUAY_CONFIG=__INSTALL_DIR__/config.yaml
+Environment=NASQUAY_INSTALL_DIR=__INSTALL_DIR__
+
+ExecStart=__INSTALL_DIR__/venv/bin/python -m app.worker
+
+# A deep read can take minutes; let it finish rather than killing it mid-walk.
+TimeoutStopSec=120
+
+# `always`, not `on-failure`: a clean SIGTERM is not a failure to systemd, and a
+# service that stops cleanly must still come back.
+Restart=always
+RestartSec=5
+
+StandardOutput=append:__LOG_DIR__/nasquay-worker.log
+StandardError=append:__LOG_DIR__/nasquay-worker.log
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { api, type Certificate, type Nas, type Tool } from "../api";
+import { api, type Certificate, type HiddenItem, type Nas, type Tool } from "../api";
 import Help from "../components/Help";
 
 // One page for the NAS units. Each row collapses to its state and expands to everything
@@ -99,6 +99,11 @@ export default function NasSettings() {
     name: "", address: "", mcp_port: 8443, tls_mode: "pinned", tls_cert_id: null as number | null,
     tls_fingerprint: "", mcp_token: "", ssh_user: "", ssh_port: 22, admin_url: "",
   });
+  // What each NAS hides, and the share list to tick against, loaded when a row is opened
+  // — the share list is a call to the NAS, so it is not made for rows nobody looked at.
+  const [hidden, setHidden] = useState<Record<number, HiddenItem[]>>({});
+  const [shareNames, setShareNames] = useState<Record<number, string[]>>({});
+  const [newPath, setNewPath] = useState("");
   const [tokenFor, setTokenFor] = useState<number | null>(null);
   const [newToken, setNewToken] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
@@ -190,6 +195,48 @@ export default function NasSettings() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
     }
+  };
+
+  // Ticking a box changes only this list — the share list itself is a call to the NAS,
+  // and re-reading it would make a checkbox take as long as the NAS takes to answer.
+  const refreshHidden = async (nasId: number) => {
+    try {
+      const items = await api.nas.hidden(nasId);
+      setHidden((was) => ({ ...was, [nasId]: items }));
+    } catch {
+      // A role that may not read the NAS list has nothing to show here either.
+    }
+  };
+
+  const loadHidden = async (nasId: number) => {
+    await refreshHidden(nasId);
+    // Both listings, because they do not agree on what is at the root: QTS's File Station
+    // shows entries list_shared_folder never returns — `home` on the system volume, for
+    // one — and a box that only knew about shared folders would offer no way to hide them.
+    // Each listing arrives already filtered, so a hidden entry is absent from both; the
+    // hidden rows are what say which those are.
+    try {
+      const [shares, root] = await Promise.all([
+        api.run(nasId, "list_shared_folder", {}),
+        api.run(nasId, "list_files", { path: "/", limit: 200 }),
+      ]);
+      const shareData = (shares.json_result ?? {}) as { sharedfolders?: { name?: string }[] };
+      const rootData = (root.json_result ?? {}) as { data?: { name?: string }[] };
+      const names = [
+        ...(shareData.sharedfolders ?? []).map((share) => share.name ?? ""),
+        ...(rootData.data ?? []).map((entry) => entry.name ?? ""),
+      ].filter(Boolean);
+      const unique = new Map<string, string>();
+      for (const name of names) unique.set(name.toLowerCase(), name);
+      setShareNames((was) => ({ ...was, [nasId]: [...unique.values()] }));
+    } catch {
+      setShareNames((was) => ({ ...was, [nasId]: [] }));
+    }
+  };
+
+  const openRow = (nas: Nas, expanded: boolean) => {
+    setOpen(expanded ? null : nas.id);
+    if (!expanded && hidden[nas.id] === undefined) loadHidden(nas.id);
   };
 
   const startEdit = (nas: Nas) => {
@@ -342,7 +389,7 @@ export default function NasSettings() {
             {/* Collapsed: what this box is and how it last answered. */}
             <button
               className="w-full flex items-center gap-3 text-left"
-              onClick={() => setOpen(expanded ? null : nas.id)}
+              onClick={() => openRow(nas, expanded)}
             >
               <span className="text-zinc-300 w-3">{expanded ? "▾" : "▸"}</span>
               <span className="text-sm">{nas.name}</span>
@@ -548,6 +595,122 @@ export default function NasSettings() {
                     <button className="btn-primary">Save changes</button>
                   </form>
                 )}
+
+                <Section
+                  title="What is shown"
+                  hint="presentation only — hiding grants and withholds nothing"
+                >
+                  {(() => {
+                    const items = hidden[nas.id] ?? [];
+                    const hiddenShares = items.filter((i) => i.kind === "share");
+                    const hiddenPaths = items.filter((i) => i.kind === "path");
+                    const visible = shareNames[nas.id] ?? [];
+                    const change = (what: string, action: () => Promise<unknown>) =>
+                      run(what, async () => {
+                        await action();
+                        await refreshHidden(nas.id);
+                      });
+
+                    // One row per share, hidden or not. The two sources overlap for as
+                    // long as it takes the NAS to answer again — the listing still holds
+                    // a share that has just been hidden — so they are merged by name
+                    // rather than concatenated, and the hidden list wins.
+                    const rows = new Map<string, { name: string; shown: boolean }>();
+                    for (const name of visible) rows.set(name.toLowerCase(), { name, shown: true });
+                    for (const item of hiddenShares)
+                      rows.set(item.value.toLowerCase(), { name: item.value, shown: false });
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <div className="text-xs text-zinc-300">
+                            Everything at the top of this NAS — its shared folders, and
+                            anything else File Station lists there. Unticked ones are left
+                            out of the Shares page and of the top level of Files.
+                          </div>
+                          <div className="grid md:grid-cols-3 gap-x-6">
+                            {[...rows.values()]
+                              .sort((a, b) => a.name.localeCompare(b.name))
+                              .map((share) => (
+                                <label key={share.name} className="flex items-center gap-2 py-0.5 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={share.shown}
+                                    onChange={() =>
+                                      share.shown
+                                        ? change(`${share.name} hidden`, () =>
+                                            api.nas.hide(nas.id, "share", share.name))
+                                        : change(`${share.name} shown`, async () => {
+                                            await api.nas.show(
+                                              nas.id,
+                                              hiddenShares.find((i) => i.value === share.name)!.id,
+                                            );
+                                            // Put it back in the listing here too, or the
+                                            // row would vanish until the NAS is read again.
+                                            setShareNames((was) => ({
+                                              ...was,
+                                              [nas.id]: [...(was[nas.id] ?? []), share.name],
+                                            }));
+                                          })
+                                    }
+                                  />
+                                  <span className={share.shown ? "text-zinc-200" : "text-zinc-400 line-through"}>
+                                    {share.name}
+                                  </span>
+                                </label>
+                              ))}
+                            {rows.size === 0 && (
+                              <div className="text-sm text-zinc-300">
+                                No shares read from this NAS yet.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-xs text-zinc-300">
+                            Folders hidden at one place in the tree, as File Station spells
+                            them. A folder name to hide in every share, on every NAS, belongs
+                            in Settings → General instead.
+                          </div>
+                          {hiddenPaths.map((item) => (
+                            <div key={item.id} className="flex items-center gap-2 py-0.5">
+                              <span className="font-mono text-xs text-zinc-200 flex-1 truncate">
+                                {item.value}
+                              </span>
+                              <button
+                                className="btn"
+                                onClick={() => change(`${item.value} shown`, () => api.nas.show(nas.id, item.id))}
+                              >
+                                Show
+                              </button>
+                            </div>
+                          ))}
+                          <form
+                            className="flex gap-2 items-end pt-1"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const value = newPath;
+                              change(`${value} hidden`, async () => {
+                                await api.nas.hide(nas.id, "path", value);
+                                setNewPath("");
+                              });
+                            }}
+                          >
+                            <label className="space-y-1 flex-1">
+                              <span className="text-xs uppercase tracking-wide text-zinc-300">
+                                Hide a folder
+                              </span>
+                              <input className="field font-mono text-xs" placeholder="/Series-B/@Recycle"
+                                     value={newPath} onChange={(e) => setNewPath(e.target.value)} />
+                            </label>
+                            <button className="btn" disabled={!newPath.trim()}>Hide</button>
+                          </form>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </Section>
 
                 {/* The tools this box offers, and how NASQuay classifies them. */}
                 <Section
