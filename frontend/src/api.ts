@@ -114,6 +114,15 @@ export type RunResult = {
   classification: string;
   text: string;
   json_result: unknown;
+  // Entries an administrator's visibility settings kept out of this listing.
+  hidden: number;
+};
+
+export type HiddenItem = {
+  id: number;
+  kind: "share" | "path";
+  value: string;
+  added_at: string;
 };
 
 export type Target = {
@@ -399,6 +408,11 @@ export const api = {
       request<Nas>(`/api/nas/${id}`, { method: "PATCH", body }),
     remove: (id: number) => request<void>(`/api/nas/${id}`, { method: "DELETE" }),
     check: (id: number) => request<NasCheck>(`/api/nas/${id}/check`, { method: "POST" }),
+    hidden: (id: number) => request<HiddenItem[]>(`/api/nas/${id}/hidden`),
+    hide: (id: number, kind: "share" | "path", value: string) =>
+      request<HiddenItem>(`/api/nas/${id}/hidden`, { method: "POST", body: { kind, value } }),
+    show: (id: number, itemId: number) =>
+      request<void>(`/api/nas/${id}/hidden/${itemId}`, { method: "DELETE" }),
   },
 
   // The one way a NAS tool is ever called: the server checks the role, the review state

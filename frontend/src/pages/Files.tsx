@@ -44,7 +44,7 @@ type Row = {
 
 const join = (path: string, name: string) => (path === "/" ? `/${name}` : `${path}/${name}`);
 
-export default function Files() {
+export default function Files({ isAdmin = false }: { isAdmin?: boolean }) {
   const [units, setUnits] = useState<Nas[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [path, setPath] = useState("/");
@@ -53,6 +53,11 @@ export default function Files() {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  // How many entries the visibility settings left out of this listing, and a nudge after
+  // hiding one, so the page never simply loses a row without saying why.
+  const [hiddenCount, setHiddenCount] = useState(0);
+  const [note, setNote] = useState("");
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     api.nas
@@ -76,6 +81,7 @@ export default function Files() {
       .run(selected, "list_files", { path, limit: PAGE, offset })
       .then((result) => {
         if (!current) return;
+        setHiddenCount(result.hidden);
         const data = (result.json_result ?? {}) as { data?: unknown[]; total?: number };
         const list = Array.isArray(data.data) ? data.data : [];
         setTotal(data.total ?? list.length);
@@ -107,7 +113,23 @@ export default function Files() {
     return () => {
       current = false;
     };
-  }, [selected, path, offset, units]);
+  }, [selected, path, offset, units, reload]);
+
+  // Hiding is a NAS setting, so only an administrator is offered it; it changes what this
+  // application lists and nothing on the NAS itself.
+  const hide = async (row: Row) => {
+    if (selected === null) return;
+    setError("");
+    setNote("");
+    try {
+      if (path === "/") await api.nas.hide(selected, "share", row.name);
+      else await api.nas.hide(selected, "path", join(path, row.name));
+      setNote(`${row.name} is hidden — Settings → NAS shows it again`);
+      setReload((n) => n + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That could not be hidden");
+    }
+  };
 
   const go = (next: string) => {
     setOffset(0);
@@ -143,6 +165,12 @@ export default function Files() {
           </button>
         ))}
         {error && <span className="text-sm text-red-400">{error}</span>}
+        {note && !error && <span className="text-sm text-emerald-400">{note}</span>}
+        {hiddenCount > 0 && (
+          <span className="text-xs text-zinc-300">
+            {hiddenCount} hidden by your settings
+          </span>
+        )}
       </div>
 
       {units.length === 0 && <div className="card text-sm text-zinc-300">No enabled NAS units.</div>}
@@ -185,6 +213,7 @@ export default function Files() {
                 <th className="th">Modified</th>
                 <th className="th">Owner</th>
                 <th className="th">Mode</th>
+                {isAdmin && <th className="th" />}
               </tr>
             </thead>
             <tbody>
@@ -216,11 +245,28 @@ export default function Files() {
                     {row.group && <span className="text-zinc-300"> / {row.group}</span>}
                   </td>
                   <td className="td text-zinc-300 whitespace-nowrap">{row.privilege}</td>
+                  {isAdmin && (
+                    <td className="td text-right">
+                      {row.folder && (
+                        <button
+                          className="text-xs text-zinc-400 hover:text-amber-400"
+                          title={
+                            path === "/"
+                              ? "Leave this share out of the listings"
+                              : "Leave this folder out of the listings"
+                          }
+                          onClick={() => hide(row)}
+                        >
+                          hide
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td className="td text-zinc-300" colSpan={5}>
+                  <td className="td text-zinc-300" colSpan={isAdmin ? 6 : 5}>
                     Nothing here.
                   </td>
                 </tr>

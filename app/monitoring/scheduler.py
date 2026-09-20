@@ -11,11 +11,11 @@ two costs the measurements actually have.
   **Deep** — `du` and a live `find` across every watched share. Minutes on a large share,
   so it runs a few times a day.
 
-The design puts this in a separate `nasquay-worker` process. It runs here inside the web
-service instead, because that needs no new systemd unit and no change to the deploy
-tooling, and the work is the same either way: it calls exactly what the /api/monitoring
-endpoints call. Moving it to its own process later means changing where start() is called
-from, not what it does.
+This runs in the `nasquay-worker` process, so that a collection walking a large share is
+not interrupted every time the interface is restarted. An install without a worker sets
+`collection_in_web` in config.yaml and the web process keeps the schedule instead; the
+work is identical either way, since it calls exactly what the /api/monitoring endpoints
+call.
 
 Two things keep it honest. A run that is already going is never started twice — a deep
 read taking longer than its interval delays the next one rather than piling up. And every

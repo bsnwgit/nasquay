@@ -49,7 +49,14 @@ async def lifespan(app: FastAPI):
         await sync_actions(conn)
     finally:
         await conn.close()
-    scheduler.start()
+    # The worker owns the schedule. An install without one says so in config.yaml, and
+    # then the web process keeps it — but it is said out loud either way, because
+    # collection that quietly belongs to nobody is the one failure this cannot detect.
+    if get_settings().collection_in_web:
+        scheduler.start()
+        log.info("Collection runs in the web process (collection_in_web is set)")
+    else:
+        log.info("Collection is left to nasquay-worker")
     log.info("NASQuay %s started", get_version())
 
     yield

@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from app import crypto
+from app import crypto, visibility
 from app.actions import audit, gate, qnap_catalogue
 from app.connectors import qnap_mcp
 from app.dependencies import ActionCall, CurrentCaller, DbDep
@@ -44,6 +44,10 @@ class RunOut(BaseModel):
     classification: str
     text: str
     json_result: Optional[Any] = None
+    # How many entries an administrator's visibility settings kept out of this listing.
+    # Reported rather than silent: a page saying "3 hidden" is the difference between a
+    # setting and a listing that is quietly wrong.
+    hidden: int = 0
 
 
 @router.post("", response_model=RunOut)
@@ -142,11 +146,27 @@ async def run_tool(body: RunIn, db: DbDep, caller: CurrentCaller):
     except ValueError:
         parsed = None
 
-    await call.done(target=target, params=params, detail=f"{len(text)} characters")
+    # Presentation, applied here rather than in a page so that every caller sees the same
+    # listing. It removes entries; it never adds or alters one.
+    hidden_count = 0
+    if parsed is not None and body.tool in visibility.LISTING_TOOLS:
+        hidden_count = visibility.apply(
+            body.tool, parsed, body.arguments, await visibility.rules(db, nas["id"])
+        )
+        if hidden_count:
+            # Kept in step with the JSON, so a caller reading the text sees the listing
+            # that was actually returned rather than the one before it was filtered.
+            text = json.dumps(parsed)
+
+    detail = f"{len(text)} characters"
+    if hidden_count:
+        detail += f" · {hidden_count} hidden"
+    await call.done(target=target, params=params, detail=detail)
     return RunOut(
         tool=body.tool,
         nas=nas["name"],
         classification=action["classification"],
         text=text,
         json_result=parsed,
+        hidden=hidden_count,
     )

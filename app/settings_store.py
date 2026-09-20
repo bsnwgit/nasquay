@@ -38,6 +38,23 @@ def _boolean(value: Any) -> bool:
     return value
 
 
+def _name_list(value: Any) -> list[str]:
+    """A list of folder names: no paths, no wildcards, nothing empty."""
+    if not isinstance(value, list) or any(not isinstance(name, str) for name in value):
+        raise ValueError("must be a list of names")
+    names = [name.strip() for name in value if name.strip()]
+    if len(names) > 100:
+        raise ValueError("no more than 100 names")
+    for name in names:
+        if "/" in name or len(name) > 255:
+            raise ValueError(f"not a folder name: {name}")
+    # Case-insensitively unique, keeping the spelling that was given.
+    seen: dict[str, str] = {}
+    for name in names:
+        seen.setdefault(name.lower(), name)
+    return list(seen.values())
+
+
 def _int_between(low: int, high: int) -> Validator:
     def check(value: Any) -> Any:
         if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
@@ -76,6 +93,16 @@ SCHEMA: dict[str, tuple[Any, Validator]] = {
     # How far two measurements of the same thing may differ before that itself is a flag.
     # Not zero: `df` and the NAS's API are taken moments apart on a busy volume.
     "rule_divergence_pct":    (2,   _int_between(1, 50)),
+
+    # Folder names left out of the file listings wherever they appear, on every NAS. The
+    # defaults are QTS's own housekeeping directories, which exist in every share and are
+    # never what anyone opened the Files page to look at. Hiding one share or one folder
+    # is a per-NAS setting instead; this is the list that would otherwise be repeated in
+    # every share on every box. Presentation only — nothing here affects access.
+    "files_hidden_names": (
+        ["@Recycle", ".@__thumb", "@Recently-Snapshot", "@Transcode", ".@upload_cache"],
+        _name_list,
+    ),
 }
 
 

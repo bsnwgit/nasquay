@@ -90,6 +90,11 @@ class Settings(BaseSettings):
         default=_yaml_cfg.get("refresh_token_expire_days", 7), ge=1, le=90
     )
 
+    # ── Processes ─────────────────────────────────────────────────────────────
+    # Collection normally runs in nasquay-worker. Set this true for an install with no
+    # worker service, and the web process keeps the schedule itself.
+    collection_in_web: bool = Field(default=_yaml_cfg.get("collection_in_web", False))
+
     # ── Stored-secret encryption (Fernet) ─────────────────────────────────────
     # Separate from secret_key: signing sessions and encrypting stored secrets are
     # unrelated jobs, and one leaked key should not give away both.

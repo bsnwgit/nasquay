@@ -312,6 +312,116 @@ async def delete_nas(
     await call.done(target=target)
 
 
+# ── What a NAS shows ──────────────────────────────────────────────────────────
+#
+# Presentation, and a setting of the NAS, so it is nas.list to read and nas.update to
+# change rather than a pair of permissions of its own: nothing here grants access to
+# anything, and whoever may change a NAS's address may reasonably say which of its shares
+# this application lists.
+
+class HiddenOut(BaseModel):
+    id: int
+    kind: str
+    value: str
+    added_at: str
+
+
+class HiddenIn(BaseModel):
+    kind: str = Field(pattern="^(share|path)$")
+    value: str = Field(min_length=1, max_length=1024)
+
+
+def _hidden_value(kind: str, value: str) -> str:
+    """A share is a name; a path is rooted and has no trailing slash."""
+    clean = value.strip()
+    if kind == "share":
+        clean = clean.strip("/")
+        if "/" in clean:
+            raise ValueError("A share is named, not a path — /Series-B is just Series-B")
+    else:
+        clean = "/" + clean.strip("/")
+        if clean == "/":
+            raise ValueError("The root itself cannot be hidden")
+    if not clean:
+        raise ValueError("Nothing to hide")
+    return clean
+
+
+@router.get("/{nas_id}/hidden", response_model=list[HiddenOut])
+async def list_hidden(
+    nas_id: int, db: DbDep, call: Annotated[ActionCall, Depends(require("nas.list"))]
+):
+    row = await _fetch(db, nas_id)
+    if row is None:
+        await call.failed("NAS not found", target=f"nas:{nas_id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "NAS not found")
+    async with db.execute(
+        """SELECT id, kind, value, added_at FROM hidden_items
+           WHERE nas_id = ? ORDER BY kind, value""",
+        (nas_id,),
+    ) as cur:
+        rows = await cur.fetchall()
+    await call.done(target=_target(row), detail=f"{len(rows)} hidden")
+    return [dict(r) for r in rows]
+
+
+@router.post("/{nas_id}/hidden", response_model=HiddenOut, status_code=status.HTTP_201_CREATED)
+async def hide_item(
+    nas_id: int, body: HiddenIn, db: DbDep,
+    call: Annotated[ActionCall, Depends(require("nas.update"))],
+):
+    row = await _fetch(db, nas_id)
+    if row is None:
+        await call.failed("NAS not found", target=f"nas:{nas_id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "NAS not found")
+    target = _target(row)
+
+    try:
+        value = _hidden_value(body.kind, body.value)
+    except ValueError as exc:
+        await call.failed(str(exc), target=target)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+
+    try:
+        cur = await db.execute(
+            "INSERT INTO hidden_items (nas_id, kind, value, added_by) VALUES (?, ?, ?, ?)",
+            (nas_id, body.kind, value, call.caller.user_id),
+        )
+        await db.commit()
+    except sqlite3.IntegrityError:
+        await db.rollback()
+        await call.failed("already hidden", target=target, params={"kind": body.kind, "value": value})
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{value} is already hidden")
+
+    await call.done(target=target, params={"hide": body.kind, "value": value})
+    async with db.execute(
+        "SELECT id, kind, value, added_at FROM hidden_items WHERE id = ?", (cur.lastrowid,)
+    ) as got:
+        return dict(await got.fetchone())
+
+
+@router.delete("/{nas_id}/hidden/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def show_item(
+    nas_id: int, item_id: int, db: DbDep,
+    call: Annotated[ActionCall, Depends(require("nas.update"))],
+) -> None:
+    row = await _fetch(db, nas_id)
+    if row is None:
+        await call.failed("NAS not found", target=f"nas:{nas_id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "NAS not found")
+    async with db.execute(
+        "SELECT kind, value FROM hidden_items WHERE id = ? AND nas_id = ?", (item_id, nas_id)
+    ) as cur:
+        item = await cur.fetchone()
+    if item is None:
+        await call.failed("not hidden", target=_target(row))
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That item is not hidden")
+
+    await db.execute("DELETE FROM hidden_items WHERE id = ?", (item_id,))
+    await db.commit()
+    await call.done(target=_target(row), params={"show": item["kind"], "value": item["value"]})
+
+
 @router.post("/{nas_id}/check", response_model=CheckOut)
 async def check_nas(
     nas_id: int, db: DbDep, call: Annotated[ActionCall, Depends(require("nas.check"))]

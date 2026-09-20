@@ -20,6 +20,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_NAME="nasquay-web"
+WORKER_NAME="nasquay-worker"
 UNIT_FILE="/etc/systemd/system/$UNIT_NAME.service"
 
 KEEP_DATA=0
@@ -72,6 +73,7 @@ echo "Install directory: $INSTALL_DIR"
 echo ""
 echo "This will:"
 [ -f "$UNIT_FILE" ] && echo "  - stop and remove the $UNIT_NAME service"
+[ -f "/etc/systemd/system/$WORKER_NAME.service" ] && echo "  - stop and remove the $WORKER_NAME service"
 [ -d "$INSTALL_DIR/venv" ] && echo "  - delete the Python environment (venv/)"
 if [ "$KEEP_DATA" -eq 0 ]; then
     for item in config.yaml data secrets logs; do
@@ -102,14 +104,17 @@ if [ "$ASSUME_YES" -eq 0 ]; then
     esac
 fi
 
-# -- Service ---------------------------------------------------------------------
-if [ -f "$UNIT_FILE" ]; then
-    echo "Stopping and removing the $UNIT_NAME service (needs sudo)..."
-    sudo systemctl disable --now "$UNIT_NAME" 2>/dev/null || true
-    sudo rm -f "$UNIT_FILE"
+# -- Services --------------------------------------------------------------------
+# The worker goes first: it reads the database the web service owns.
+for unit in "$WORKER_NAME" "$UNIT_NAME"; do
+    unit_file="/etc/systemd/system/$unit.service"
+    [ -f "$unit_file" ] || continue
+    echo "Stopping and removing the $unit service (needs sudo)..."
+    sudo systemctl disable --now "$unit" 2>/dev/null || true
+    sudo rm -f "$unit_file"
     sudo systemctl daemon-reload
-    sudo systemctl reset-failed "$UNIT_NAME" 2>/dev/null || true
-fi
+    sudo systemctl reset-failed "$unit" 2>/dev/null || true
+done
 
 # -- Files -----------------------------------------------------------------------
 if [ -d "$INSTALL_DIR" ]; then

@@ -147,6 +147,7 @@ SERVICE_GROUP="$(id -gn)"
 LOG_DIR="$INSTALL_DIR/logs"
 VENV="$INSTALL_DIR/venv"
 UNIT_NAME="nasquay-web"
+WORKER_NAME="nasquay-worker"
 UNIT_FILE="/etc/systemd/system/$UNIT_NAME.service"
 
 echo "=== NASQuay installer ==="
@@ -269,29 +270,43 @@ else
     echo "  cd $INSTALL_DIR && NASQUAY_CONFIG=$CONFIG $VENV/bin/python scripts/create_admin.py"
 fi
 
-# -- Service ---------------------------------------------------------------------
-echo ""
-echo "Installing the $UNIT_NAME service (needs sudo)..."
+# -- Services --------------------------------------------------------------------
+# Two units: the web service, and the worker that keeps the monitoring schedule (and
+# later the jobs and routines), so a long collection is not cut short every time the
+# interface is restarted.
 UNIT_TMP="$(mktemp)"
 trap 'rm -f "$UNIT_TMP"' EXIT
-sed -e "s|__INSTALL_DIR__|$INSTALL_DIR|g" \
-    -e "s|__LOG_DIR__|$LOG_DIR|g" \
-    -e "s|__SERVICE_USER__|$SERVICE_USER|g" \
-    -e "s|__SERVICE_GROUP__|$SERVICE_GROUP|g" \
-    "$INSTALL_DIR/deploy/$UNIT_NAME.service" > "$UNIT_TMP"
-sudo install -m 0644 "$UNIT_TMP" "$UNIT_FILE"
-# systemd opens the log file as root. Left to create it, it makes a root-owned file the
-# service account cannot read, so create it first — or hand an existing one back.
-LOG_FILE="$LOG_DIR/$UNIT_NAME.log"
-if [ -e "$LOG_FILE" ]; then
-    sudo chown "$SERVICE_USER:$SERVICE_GROUP" "$LOG_FILE"
-    sudo chmod 0640 "$LOG_FILE"
-else
-    install -m 0640 /dev/null "$LOG_FILE"
-fi
+
+install_unit() {
+    unit="$1"
+    echo ""
+    echo "Installing the $unit service (needs sudo)..."
+    sed -e "s|__INSTALL_DIR__|$INSTALL_DIR|g" \
+        -e "s|__LOG_DIR__|$LOG_DIR|g" \
+        -e "s|__SERVICE_USER__|$SERVICE_USER|g" \
+        -e "s|__SERVICE_GROUP__|$SERVICE_GROUP|g" \
+        "$INSTALL_DIR/deploy/$unit.service" > "$UNIT_TMP"
+    sudo install -m 0644 "$UNIT_TMP" "/etc/systemd/system/$unit.service"
+    # systemd opens the log file as root. Left to create it, it makes a root-owned file
+    # the service account cannot read, so create it first — or hand an existing one back.
+    unit_log="$LOG_DIR/$unit.log"
+    if [ -e "$unit_log" ]; then
+        sudo chown "$SERVICE_USER:$SERVICE_GROUP" "$unit_log"
+        sudo chmod 0640 "$unit_log"
+    else
+        install -m 0640 /dev/null "$unit_log"
+    fi
+}
+
+install_unit "$UNIT_NAME"
+install_unit "$WORKER_NAME"
+
 sudo systemctl daemon-reload
+# The web service first: it owns the schema, and the worker waits for it.
 sudo systemctl enable --quiet "$UNIT_NAME"
 sudo systemctl restart "$UNIT_NAME"
+sudo systemctl enable --quiet "$WORKER_NAME"
+sudo systemctl restart "$WORKER_NAME"
 
 # -- Check it answers ------------------------------------------------------------
 echo "Waiting for NASQuay to answer on $CHECK_HOST:$PORT..."
@@ -317,3 +332,9 @@ fi
 echo "NASQuay $(cat "$INSTALL_DIR/VERSION" 2>/dev/null) is running on $HOST:$PORT."
 echo "API reference: http://$CHECK_HOST:$PORT/api/docs"
 echo "To change the listen address or port later, edit config.yaml and restart $UNIT_NAME."
+if ! systemctl is-active --quiet "$WORKER_NAME"; then
+    echo ""
+    echo "WARNING: $WORKER_NAME is not running, so nothing collects on a schedule."
+    echo "  sudo systemctl status $WORKER_NAME"
+    echo "  tail -n 50 $LOG_DIR/$WORKER_NAME.log"
+fi

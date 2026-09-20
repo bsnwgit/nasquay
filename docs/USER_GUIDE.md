@@ -29,7 +29,7 @@ Five groups along the top, each opening on an overview with its own list on the 
 | Group | Holds |
 |---|---|
 | **Home** | the NAS units NASQuay knows, when each was last checked, and a link to each one's own interface where an administrator has recorded it |
-| **Storage** | Overview, Pools, Shares, Files |
+| **Storage** | Overview, Pools, Shares, Files — an administrator can leave shares and folders out of these listings; the page says how many |
 | **Activity** | Dashboard, NAS, Clients, Logs, Audit |
 | **System** | Overview, Accounts, System, Security |
 | **Settings** | configuration, for administrators |

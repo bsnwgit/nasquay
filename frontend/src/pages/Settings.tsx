@@ -174,6 +174,31 @@ function General() {
             onBlur={(e) => save({ audit_retention_days: Number(e.target.value) })}
           />
         </label>
+
+        <label className="block space-y-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-300">
+            Folders hidden everywhere
+          </span>
+          <input
+            className="field font-mono text-xs"
+            key={String(values.files_hidden_names ?? "")}
+            defaultValue={(values.files_hidden_names as string[] | undefined)?.join(", ") ?? ""}
+            onBlur={(e) =>
+              save({
+                files_hidden_names: e.target.value
+                  .split(",")
+                  .map((name) => name.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+          <span className="block text-xs text-zinc-300">
+            Folder names left out of the file listings wherever they appear, on every NAS —
+            QTS's housekeeping directories by default. Names, separated by commas, not paths.
+            Presentation only: hiding a folder grants and withholds nothing. One share, or one
+            folder in one place, is hidden per NAS under Settings → NAS instead.
+          </span>
+        </label>
       </div>
 
       <div className="card space-y-3">
