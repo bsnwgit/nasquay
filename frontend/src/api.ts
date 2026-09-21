@@ -237,6 +237,53 @@ export type Notifications = {
   last_result: string;
 };
 
+export type Provider = {
+  id: number;
+  name: string;
+  kind: "openai" | "anthropic";
+  base_url: string;
+  model: string;
+  timeout_s: number;
+  supports_tools: boolean;
+  enabled: boolean;
+  tls_cert_id: number | null;
+  tls_cert_name: string | null;
+  has_api_key: boolean;
+  last_tested_at: string | null;
+  last_result: string;
+  tools_ok: boolean | null;
+};
+
+export type ResonanceConfig = {
+  enabled: boolean;
+  base_url: string;
+  label: string;
+  side: string;
+};
+
+export type ResonanceSettings = {
+  enabled: boolean;
+  base_url: string;
+  label: string;
+  side: string;
+  ca_bundle: string;
+  has_key: boolean;
+  module_version: string;
+  last_used_at: string | null;
+  last_result: string;
+  updated_at: string | null;
+};
+
+export type ResonanceSession = {
+  code: string;
+  src: string;
+  base_url: string;
+  code_expires_in: number | null;
+  expires_in: number | null;
+  parts: unknown;
+  cap: unknown;
+};
+
 export type AddressChoice = { address: string; label: string };
 
 export type Network = {
@@ -301,6 +348,35 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+/**
+ * A call the assistant asked for. Deliberately narrow, because the request arrives from
+ * the frame and the frame is untrusted by definition: only GET, only the operations
+ * surface, and never a path that climbs out of it. Everything else the session can reach
+ * — the settings, /api/run, the audit log — is unreachable from here.
+ */
+export async function assistantCall(
+  path: string,
+): Promise<{ status: number; body: unknown }> {
+  const url = new URL(path, window.location.origin);
+  if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/resonance/data/")) {
+    return { status: 403, body: { error: "That is not an operation this page may perform" } };
+  }
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const response = await fetch(url.pathname + url.search, {
+    headers,
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  return { status: response.status, body };
 }
 
 export async function refresh(): Promise<Session | null> {
@@ -483,6 +559,16 @@ export const api = {
       request<void>(`/api/keys/${encodeURIComponent(name)}`, { method: "DELETE" }),
   },
 
+  resonance: {
+    config: () => request<ResonanceConfig>("/api/resonance/config"),
+    // Every mount and every renewal: one short-lived, single-use code, audited.
+    code: () => request<ResonanceSession>("/api/resonance/code", { method: "POST" }),
+    settings: () => request<ResonanceSettings>("/api/resonance/settings"),
+    save: (body: Record<string, unknown>) =>
+      request<ResonanceSettings>("/api/resonance/settings", { method: "PATCH", body }),
+    test: () => request<ResonanceSession>("/api/resonance/test", { method: "POST" }),
+  },
+
   certificates: {
     list: () => request<Certificate[]>("/api/certificates"),
     add: (body: { name: string; pem: string }) =>
@@ -519,6 +605,20 @@ export const api = {
         method: "POST",
         body,
       }),
+  },
+
+  providers: {
+    list: () => request<Provider[]>("/api/providers"),
+    create: (body: Record<string, unknown>) =>
+      request<Provider>("/api/providers", { method: "POST", body }),
+    update: (id: number, body: Record<string, unknown>) =>
+      request<Provider>(`/api/providers/${id}`, { method: "PATCH", body }),
+    remove: (id: number) => request<void>(`/api/providers/${id}`, { method: "DELETE" }),
+    test: (id: number) =>
+      request<{ ok: boolean; tools_ok: boolean | null; detail: string }>(
+        `/api/providers/${id}/test`,
+        { method: "POST" },
+      ),
   },
 
   notifications: {

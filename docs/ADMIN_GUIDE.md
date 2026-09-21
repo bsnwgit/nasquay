@@ -159,6 +159,75 @@ mistake in the interface nor a direct write can leave the installation with no w
 
 ---
 
+## The assistant
+
+**Settings → AI → Assistant.** An assistant panel from a resonance server, embedded in
+NASQuay's own pages.
+
+In resonance, create an **embed key** for NASQuay. Paste it here with the **embed server's
+address** — its embed server, not its admin port, which answers a session request with a
+404 and is the commonest mistake here. **Test** asks for a code and throws it away, so you
+can see that the key works and what it grants without waiting for somebody to open the
+panel.
+
+NASQuay's key never reaches a browser. Each time the panel opens or renews, NASQuay asks
+resonance for a short-lived, single-use code and hands over only that. Opening the panel is
+its own permission — `resonance.use` — and every code issued is in the audit log under the
+name it was issued for.
+
+**Certificates matter more than usual here.** The panel is an iframe in each person's
+browser, so *their* browser must trust the embed server's certificate, reached by a name
+that is on it. A frame whose certificate is not trusted fails silently, for everybody, with
+nothing to click through. NASQuay calls the same address itself, so this host must resolve
+and trust it too — paste your own authority into the field provided when it is an internal
+one. An IP address is not on a certificate unless somebody put it there.
+
+### What the assistant may ask
+
+Resonance reads two documents from NASQuay, both on the address the site is registered
+under:
+
+- **`/api/resonance/openapi.json`** — the operations it may call. Press **READ SPEC** on
+  NASQuay's row in resonance and point it at that path.
+- **`/.well-known/resonance.json`** — the grant file, which is the ceiling. An operation
+  not named there is unreachable however the spec is read.
+
+Five operations, all reads, all answered from what NASQuay has already recorded — the NAS
+units and their last check, the latest measurements, open flags, one figure's history, and
+whether collection is current. **Nothing there contacts a NAS**, so a conversation cannot
+wake a box up or start a walk across a large share.
+
+Each call is performed by NASQuay's own page, as the person signed in, and passes the same
+permission check and audit log as any other action. The panel never holds a token and can
+never read what that person could not already read. Nothing on this surface changes
+anything.
+
+## AI providers
+
+**Settings → AI → Providers.** The AI services routines run against. Add as many as you like;
+each routine chooses one.
+
+- **OpenAI-compatible** covers Ollama, LM Studio, vLLM and OpenAI. The base URL is the part
+  before `/chat/completions` — for Ollama, its address followed by `/v1`, such as
+  `http://host.example.com:11434/v1`.
+- **Anthropic** is the Anthropic Messages API, normally at `https://api.anthropic.com`.
+
+The **API key** is write-only, like every other secret in NASQuay: encrypted in the database,
+never shown again. Leaving the field blank on an edit keeps the stored key. A local server
+that needs no key can have one removed with **Remove key**.
+
+**Test** sends a trivial request. If **tool calling** is ticked, it then asks the model to
+call a harmless probe tool with a given number, and records whether it did — nothing is run
+on its behalf. Small local models often fail this. A routine that needs tools is refused a
+provider whose tool test failed. Changing the kind, address, model, key or certificate clears
+the last result, so test again afterwards.
+
+The **timeout** is how long to wait for one answer. A small model on modest hardware can
+need most of a minute once a routine hands it a list of tools; the default is 120 seconds.
+
+For a server whose certificate comes from an internal authority, upload the authority under
+Settings → Certificates and choose it here. TLS verification is never switched off.
+
 ## SSH keys
 
 **Settings → SSH keys.**
