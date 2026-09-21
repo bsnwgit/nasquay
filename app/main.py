@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.actions.registry import sync_actions
 from app.monitoring import scheduler
+from app.routines import scheduler as routine_scheduler
 from app import settings_store
 from app.config import get_settings
 from app.database import connect, init_db
@@ -31,6 +32,9 @@ from app.api import providers as providers_router
 from app.api import nas      as nas_router
 from app.api import resonance as resonance_router
 from app.api import resonance_data as resonance_data_router
+from app.api import routines as routines_router
+from app.api import mcp as mcp_router
+from app.api import tokens as tokens_router
 from app.api import roles    as roles_router
 from app.api import run      as run_router
 from app.api import settings as settings_router
@@ -57,14 +61,16 @@ async def lifespan(app: FastAPI):
     # collection that quietly belongs to nobody is the one failure this cannot detect.
     if get_settings().collection_in_web:
         scheduler.start()
-        log.info("Collection runs in the web process (collection_in_web is set)")
+        routine_scheduler.start()
+        log.info("Collection and routines run in the web process (collection_in_web is set)")
     else:
-        log.info("Collection is left to nasquay-worker")
+        log.info("Collection and routines are left to nasquay-worker")
     log.info("NASQuay %s started", get_version())
 
     yield
 
     await scheduler.stop()
+    await routine_scheduler.stop()
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     log.info("NASQuay shutting down")
@@ -96,6 +102,10 @@ app.include_router(keys_router.router,     prefix="/api/keys",       tags=["keys
 app.include_router(certificates_router.router, prefix="/api/certificates", tags=["certificates"])
 app.include_router(notifications_router.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(providers_router.router, prefix="/api/providers", tags=["providers"])
+app.include_router(routines_router.router, prefix="/api/routines", tags=["routines"])
+app.include_router(tokens_router.router,   prefix="/api/tokens",   tags=["tokens"])
+# MCP clients are configured with a URL, and /mcp is the one they expect.
+app.include_router(mcp_router.router, tags=["mcp"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])
 app.include_router(resonance_router.router, prefix="/api/resonance", tags=["resonance"])

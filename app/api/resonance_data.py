@@ -129,7 +129,7 @@ class CollectionOut(BaseModel):
 # ── The operations ────────────────────────────────────────────────────────────
 
 @router.get("/api/resonance/data/nas", response_model=NasList, operation_id="listNasUnits",
-            summary="List this installation's NAS units by name")
+            summary="Look up a NAS by name. Every NAS name here is a label for one of this installation's own units, never anything else")
 async def list_nas_units(
     db: DbDep, call: Annotated[ActionCall, Depends(require("nas.list"))],
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
@@ -168,7 +168,7 @@ async def list_nas_units(
 
 @router.get("/api/resonance/data/measurements", response_model=MeasurementList,
             operation_id="listMeasurements",
-            summary="The latest recorded figures for what is watched")
+            summary="The shares, volumes and pools on each NAS, with their latest used space, free space and file counts")
 async def list_measurements(
     db: DbDep, call: Annotated[ActionCall, Depends(require("monitoring.read"))],
     nas: str = Query("", description="Restrict to one NAS. Use a name exactly as listNasUnits gave it; this is a label, not a place or an organisation."),
@@ -178,8 +178,10 @@ async def list_measurements(
 ):
     """The latest measurement of everything watched, newest reading per series.
 
-    This is the answer to "how full is it" and "how many files are there" — recorded
-    figures, not a fresh reading, so nothing here contacts a NAS.
+    This is the answer to "what shares are on it", "how full is it" and "how many files
+    are there". Ask with kind=share to list a NAS's shares. These are recorded figures,
+    not a fresh reading, so nothing here contacts a NAS, and only what an administrator
+    chose to watch is listed.
     """
     where = ["t.enabled = 1"]
     params: list[Any] = []
@@ -357,6 +359,14 @@ GRANTED = ("listNasUnits", "listMeasurements", "listFlags", "readHistory",
            "getCollectionStatus")
 
 
+GROUNDING = (
+    "This is NASQuay, which runs the NAS units of one installation. Names of NAS units, "
+    "shares, pools and volumes are labels its administrator chose. Never read one as a "
+    "place, organisation, person or product: look it up here. Answer only from these "
+    "operations, never from general knowledge."
+)
+
+
 def _spec_for(app: FastAPI) -> dict[str, Any]:
     """This module's routes, as their own document.
 
@@ -395,6 +405,13 @@ def _spec_for(app: FastAPI) -> dict[str, Any]:
         ),
         routes=routes,
     )
+    # Resonance hands the model each operation's own summary and description and drops
+    # the document's, so the rule that matters most rides on every operation. Without it
+    # a small model asked about a NAS called NASA explains the space agency instead of
+    # looking it up.
+    for methods in spec.get("paths", {}).values():
+        for operation in methods.values():
+            operation["description"] = GROUNDING + "\n\n" + operation.get("description", "")
     return spec
 
 

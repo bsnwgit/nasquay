@@ -1,30 +1,19 @@
 """
-/api/run — running a NAS tool.
+/api/run — running a NAS tool from the pages.
 
-This is the only way a tool is ever called. The pages, and later the routines and the MCP
-endpoint, all come through here, so one permission check and one audit record cover every
-route in.
-
-Four things are checked before a NAS is contacted:
-
-  1. the caller's role allows that exact action, per NAS where an override says so;
-  2. the tool is reviewed — an unrecognised one is offered to nobody, admin included;
-  3. the NAS is known, enabled, and has a token;
-  4. a destructive action carries an explicit confirmation from a person.
+The checks themselves live in app/actions/runner.py, which the routines call too, so one
+permission check and one audit record cover every route in. This module only turns the
+runner's answer into HTTP.
 """
 from __future__ import annotations
 
-import json
-from typing import Annotated, Any, Optional
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from starlette.concurrency import run_in_threadpool
 
-from app import crypto, visibility
-from app.actions import audit, gate, qnap_catalogue
-from app.connectors import qnap_mcp
-from app.dependencies import ActionCall, CurrentCaller, DbDep
+from app.actions import runner
+from app.dependencies import CurrentCaller, DbDep
 
 router = APIRouter()
 
@@ -52,121 +41,16 @@ class RunOut(BaseModel):
 
 @router.post("", response_model=RunOut)
 async def run_tool(body: RunIn, db: DbDep, caller: CurrentCaller):
-    action_id = qnap_catalogue.action_id(body.tool)
-    params = {"nas_id": body.nas_id, "tool": body.tool, "arguments": body.arguments}
-
-    async with db.execute(
-        "SELECT id, classification, reviewed FROM actions WHERE id = ? AND source = 'qnap_mcp'",
-        (action_id,),
-    ) as cur:
-        action = await cur.fetchone()
-    if action is None:
-        await audit.record(db, caller, action_id, "denied", reason="unknown tool", params=params)
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "That tool is not known to NASQuay")
-
-    async with db.execute(
-        """SELECT id, name, address, mcp_port, tls_mode, tls_fingerprint, mcp_token, enabled,
-                  (SELECT pem FROM certificates WHERE certificates.id = nas.tls_cert_id) AS tls_ca_pem
-           FROM nas WHERE id = ?""",
-        (body.nas_id,),
-    ) as cur:
-        nas = await cur.fetchone()
-    if nas is None:
-        await audit.record(db, caller, action_id, "denied", reason="unknown NAS", params=params)
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "NAS not found")
-
-    target = f"nas:{nas['id']} {nas['name']}"
-
-    # The gate, including any per-NAS override of the role's general setting.
-    decision = await gate.check(db, caller, action_id)
-    if decision.allowed and not caller.is_admin:
-        async with db.execute(
-            "SELECT allowed FROM role_nas_permissions WHERE role_id = ? AND action_id = ? AND nas_id = ?",
-            (caller.role_id, action_id, nas["id"]),
-        ) as cur:
-            override = await cur.fetchone()
-        if override is not None and not override["allowed"]:
-            decision = gate.Decision(False, f"not allowed on {nas['name']} for role {caller.role_name}")
-    if not decision.allowed:
-        await audit.record(db, caller, action_id, "denied", reason=decision.reason,
-                           target=target, params=params, nas_id=nas["id"])
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Not permitted: {body.tool}")
-
-    if not action["reviewed"]:
-        reason = "tool not yet reviewed"
-        await audit.record(db, caller, action_id, "denied", reason=reason, target=target,
-                           params=params, nas_id=nas["id"])
-        raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            "That tool has not been reviewed yet, so nobody may run it")
-
-    if action["classification"] == "destructive" and not body.confirm:
-        reason = "destructive action without confirmation"
-        await audit.record(db, caller, action_id, "denied", reason=reason, target=target,
-                           params=params, nas_id=nas["id"])
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            "This action is destructive and needs an explicit confirmation")
-
-    if not nas["enabled"]:
-        await audit.record(db, caller, action_id, "denied", reason="NAS is disabled",
-                           target=target, params=params, nas_id=nas["id"])
-        raise HTTPException(status.HTTP_409_CONFLICT, f"{nas['name']} is disabled")
-
-    token = crypto.decrypt_str(nas["mcp_token"])
-    if not token:
-        await audit.record(db, caller, action_id, "denied", reason="no token for this NAS",
-                           target=target, params=params, nas_id=nas["id"])
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"No token is set for {nas['name']}")
-
-    call = ActionCall(db, caller, action_id, decision.reason)
-
-    def invoke() -> str:
-        connection = qnap_mcp.Connection(
-            qnap_mcp.Target(
-                address=nas["address"], port=nas["mcp_port"], token=token,
-                tls_mode=nas["tls_mode"], fingerprint=nas["tls_fingerprint"],
-                ca_pem=nas["tls_ca_pem"] or "",
-            )
-        )
-        try:
-            connection.open()
-            return connection.call_tool(body.tool, body.arguments)
-        finally:
-            connection.close()
-
     try:
-        text = await run_in_threadpool(invoke)
-    except qnap_mcp.McpError as exc:
-        await call.failed(str(exc), target=target, params=params)
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))
-
-    # QNAP returns JSON documents as text; hand back both so a page can use either.
-    parsed: Optional[Any] = None
-    try:
-        parsed = json.loads(text)
-    except ValueError:
-        parsed = None
-
-    # Presentation, applied here rather than in a page so that every caller sees the same
-    # listing. It removes entries; it never adds or alters one.
-    hidden_count = 0
-    if parsed is not None and body.tool in visibility.LISTING_TOOLS:
-        hidden_count = visibility.apply(
-            body.tool, parsed, body.arguments, await visibility.rules(db, nas["id"])
-        )
-        if hidden_count:
-            # Kept in step with the JSON, so a caller reading the text sees the listing
-            # that was actually returned rather than the one before it was filtered.
-            text = json.dumps(parsed)
-
-    detail = f"{len(text)} characters"
-    if hidden_count:
-        detail += f" · {hidden_count} hidden"
-    await call.done(target=target, params=params, detail=detail)
+        result = await runner.run_tool(db, caller, body.nas_id, body.tool, body.arguments,
+                                       body.confirm)
+    except runner.Refused as exc:
+        raise HTTPException(exc.status, exc.message)
     return RunOut(
-        tool=body.tool,
-        nas=nas["name"],
-        classification=action["classification"],
-        text=text,
-        json_result=parsed,
-        hidden=hidden_count,
+        tool=result.tool,
+        nas=result.nas,
+        classification=result.classification,
+        text=result.text,
+        json_result=result.parsed,
+        hidden=result.hidden,
     )

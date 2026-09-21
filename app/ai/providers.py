@@ -192,6 +192,36 @@ def _anthropic(provider: Provider, system: str, messages: list[dict[str, Any]],
                  stop=str(body.get("stop_reason") or ""))
 
 
+def assistant_turn(provider: Provider, reply: Reply) -> dict[str, Any]:
+    """The model's own turn, in its dialect, to go back into the conversation."""
+    if provider.kind == "anthropic":
+        content: list[dict[str, Any]] = []
+        if reply.text:
+            content.append({"type": "text", "text": reply.text})
+        content += [{"type": "tool_use", "id": c.id, "name": c.name, "input": c.arguments}
+                    for c in reply.tool_calls]
+        return {"role": "assistant", "content": content}
+    return {
+        "role": "assistant",
+        "content": reply.text or None,
+        "tool_calls": [
+            {"id": c.id, "type": "function",
+             "function": {"name": c.name, "arguments": json.dumps(c.arguments)}}
+            for c in reply.tool_calls
+        ],
+    }
+
+
+def tool_results(provider: Provider, results: list[tuple[ToolCall, str]]) -> list[dict[str, Any]]:
+    """What each tool call returned, in the provider's dialect."""
+    if provider.kind == "anthropic":
+        return [{"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": call.id, "content": text}
+            for call, text in results
+        ]}]
+    return [{"role": "tool", "tool_call_id": call.id, "content": text} for call, text in results]
+
+
 def chat(provider: Provider, system: str, messages: list[dict[str, Any]],
          tools: Optional[list[Tool]] = None) -> Reply:
     """One turn: the conversation so far in, the model's reply out."""
