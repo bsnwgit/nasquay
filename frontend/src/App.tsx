@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Storage from "./pages/Storage";
 import Shares from "./pages/Shares";
 import Files from "./pages/Files";
+import ResonanceMount from "./resonance/ResonanceMount";
 import Accounts from "./pages/Accounts";
 import Logs from "./pages/Logs";
 import System from "./pages/System";
@@ -203,6 +204,10 @@ export default function App() {
       {accountOpen && (
         <Account session={session} onClose={() => setAccountOpen(false)} onSignOut={signOut} />
       )}
+
+      {/* Once, inside the signed-in layout — never per page. Every mount costs a session
+          code, and a remount discards the conversation that was running. */}
+      <ResonanceMount />
     </div>
   );
 }

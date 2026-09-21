@@ -7,6 +7,7 @@ import MonitoringSettings from "./MonitoringSettings";
 import KeysSettings from "./KeysSettings";
 import CertSettings from "./CertSettings";
 import NotificationSettings from "./NotificationSettings";
+import AiSettings from "./AiSettings";
 import Help from "../components/Help";
 
 // One settings section with tabs down the side, the way the suite's other apps do it.
@@ -25,7 +26,7 @@ const ZONES: string[] = (() => {
           "America/Los_Angeles", "Europe/London", "Europe/Paris", "Australia/Sydney"];
 })();
 
-const TABS = ["General", "NAS", "Monitoring", "Notifications", "Certificates", "SSH keys", "Users", "Roles", "Network"] as const;
+const TABS = ["General", "NAS", "Monitoring", "Notifications", "AI", "Certificates", "SSH keys", "Users", "Roles", "Network"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -55,6 +56,7 @@ export default function Settings() {
         {tab === "NAS" && <NasSettings />}
         {tab === "Monitoring" && <MonitoringSettings />}
         {tab === "Notifications" && <NotificationSettings />}
+        {tab === "AI" && <AiSettings />}
         {tab === "Certificates" && <CertSettings />}
         {tab === "SSH keys" && <KeysSettings />}
         {tab === "Users" && <Users />}

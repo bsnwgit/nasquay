@@ -25,7 +25,8 @@ router = APIRouter()
 _SELECT = """
     SELECT c.id, c.name, c.pem, c.fingerprint, c.subject, c.issuer, c.not_before,
            c.not_after, c.is_ca, c.added_at,
-           (SELECT COUNT(*) FROM nas WHERE nas.tls_cert_id = c.id) AS in_use
+           (SELECT COUNT(*) FROM nas WHERE nas.tls_cert_id = c.id)
+         + (SELECT COUNT(*) FROM ai_providers p WHERE p.tls_cert_id = c.id) AS in_use
     FROM certificates c
 """
 
@@ -118,7 +119,7 @@ async def delete_certificate(
     if row["in_use"]:
         await call.failed("certificate is in use", target=target)
         raise HTTPException(status.HTTP_409_CONFLICT,
-                            f"{row['in_use']} NAS unit(s) are verified against it")
+                            f"{row['in_use']} NAS unit(s) or AI provider(s) are verified against it")
 
     await db.execute("DELETE FROM certificates WHERE id = ?", (cert_id,))
     await db.commit()

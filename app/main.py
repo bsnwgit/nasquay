@@ -27,7 +27,10 @@ from app.api import clients as clients_router
 from app.api import keys    as keys_router
 from app.api import monitoring as monitoring_router
 from app.api import notifications as notifications_router
+from app.api import providers as providers_router
 from app.api import nas      as nas_router
+from app.api import resonance as resonance_router
+from app.api import resonance_data as resonance_data_router
 from app.api import roles    as roles_router
 from app.api import run      as run_router
 from app.api import settings as settings_router
@@ -92,8 +95,15 @@ app.include_router(clients_router.router,  prefix="/api/clients",    tags=["clie
 app.include_router(keys_router.router,     prefix="/api/keys",       tags=["keys"])
 app.include_router(certificates_router.router, prefix="/api/certificates", tags=["certificates"])
 app.include_router(notifications_router.router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(providers_router.router, prefix="/api/providers", tags=["providers"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(system_router.router,   prefix="/api/system",   tags=["system"])
+app.include_router(resonance_router.router, prefix="/api/resonance", tags=["resonance"])
+# The assistant's data surface carries its own absolute paths — the operations under
+# /api/resonance/data/ plus the two documents resonance reads — so it is registered
+# without a prefix, and the grant file has to sit at /.well-known/ to be believed.
+app.include_router(resonance_data_router.router, tags=["resonance"])
+resonance_data_router.attach(app)
 app.include_router(tools_router.router,    prefix="/api/tools",    tags=["tools"])
 
 
