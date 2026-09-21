@@ -254,6 +254,73 @@ export type Provider = {
   tools_ok: boolean | null;
 };
 
+export type RoutineStep = { op: string; nas: string; arguments: Record<string, unknown> };
+
+export type Routine = {
+  id: number;
+  name: string;
+  description: string;
+  enabled: boolean;
+  kind: "fixed" | "ai";
+  run_as_user_id: number | null;
+  run_as_username: string | null;
+  schedule_kind: "manual" | "interval" | "daily" | "weekly";
+  interval_minutes: number;
+  at_time: string;
+  weekday: number;
+  provider_id: number | null;
+  provider_name: string | null;
+  prompt: string;
+  steps: RoutineStep[];
+  allowed: string[];
+  allow_destructive: boolean;
+  max_steps: number;
+  timeout_s: number;
+  alert_on: "never" | "failure" | "always";
+  created_at: string;
+  updated_at: string | null;
+  last_status: string | null;
+  last_queued_at: string | null;
+  last_finished_at: string | null;
+  last_error: string | null;
+};
+
+export type RoutineOperation = {
+  id: string;
+  description: string;
+  classification: string;
+  needs_nas: boolean;
+  nas_names: string[];
+  parameters: Record<string, unknown>;
+};
+
+export type RoutineRun = {
+  id: number;
+  trigger: string;
+  status: string;
+  queued_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  output: string;
+  error: string;
+  calls: { op: string; nas: string; arguments: Record<string, unknown>; ok: boolean; detail: string; at: string }[];
+  alert: string;
+};
+
+export type ApiToken = {
+  id: number;
+  user_id: number;
+  username: string;
+  name: string;
+  prefix: string;
+  access: "read" | "write";
+  allow_destructive: boolean;
+  created_at: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+};
+
 export type ResonanceConfig = {
   enabled: boolean;
   base_url: string;
@@ -619,6 +686,30 @@ export const api = {
         `/api/providers/${id}/test`,
         { method: "POST" },
       ),
+  },
+
+  tokens: {
+    list: () => request<ApiToken[]>("/api/tokens"),
+    create: (body: {
+      name: string;
+      access: string;
+      allow_destructive: boolean;
+      expires_days: number;
+    }) => request<ApiToken & { token: string }>("/api/tokens", { method: "POST", body }),
+    revoke: (id: number) => request<void>(`/api/tokens/${id}`, { method: "DELETE" }),
+  },
+
+  routines: {
+    list: () => request<Routine[]>("/api/routines"),
+    operations: () => request<RoutineOperation[]>("/api/routines/operations"),
+    create: (body: Record<string, unknown>) =>
+      request<Routine>("/api/routines", { method: "POST", body }),
+    update: (id: number, body: Record<string, unknown>) =>
+      request<Routine>(`/api/routines/${id}`, { method: "PATCH", body }),
+    remove: (id: number) => request<void>(`/api/routines/${id}`, { method: "DELETE" }),
+    run: (id: number) =>
+      request<{ run_id: number }>(`/api/routines/${id}/run`, { method: "POST" }),
+    runs: (id: number) => request<RoutineRun[]>(`/api/routines/${id}/runs`),
   },
 
   notifications: {

@@ -35,7 +35,7 @@ migrations and installs two systemd units:
 
 - **`nasquay-web`** — the API and the interface. It owns the database schema: migrations run
   when it starts.
-- **`nasquay-worker`** — the monitoring schedule, and in time the jobs and routines. It is a
+- **`nasquay-worker`** — the monitoring schedule and the routines. It is a
   process of its own so that a collection walking a large share is not cut short every time
   the interface is restarted, and it applies no migrations: it waits for the web service to
   have the schema ready.
@@ -227,6 +227,79 @@ need most of a minute once a routine hands it a list of tools; the default is 12
 
 For a server whose certificate comes from an internal authority, upload the authority under
 Settings → Certificates and choose it here. TLS verification is never switched off.
+
+## Routines
+
+**Settings → Routines.** Work NASQuay does by itself — on a schedule, or when somebody
+presses **Run now**.
+
+- **Fixed** routines run a list of steps in order and stop at the first that fails. A
+  notification step can carry what the step before it returned: write `{previous}` in its
+  body.
+- **AI** routines hand a prompt to a model, with the operations you tick, and the model
+  decides what to call. The provider must have passed its tool-calling test.
+
+What a routine can call: the recorded data (NAS units, measurements, flags, history,
+collection status — nothing that contacts a NAS), every reviewed NAS tool, and **notify**,
+which sends on the channels under Settings → Notifications.
+
+**Schedules** are by hand only, every N minutes, daily at a time, or weekly on a day at a
+time, in the installation's time zone. Saving a schedule starts it from then: a daily 07:00
+routine saved at 09:00 first runs tomorrow.
+
+**The limits, all enforced by the server:**
+
+- A routine runs **as a user** and never does more than that user's role allows — nor more
+  than its own list. Every call passes the same permission check as the pages and is in the
+  audit log as `via routine`.
+- You can only choose **yourself**, or a user whose role you could hand out. The same check
+  applies to editing, running, deleting and reading the runs of an existing routine, so a
+  routine that runs as an administrator is managed by administrators only.
+- **Destructive** operations are refused unless the routine explicitly allows them, and only
+  an administrator can allow that. It is checked again at every call, so a tool reclassified
+  as destructive later is refused from then on.
+- The **step limit** counts every call a model makes; the **timeout** covers the whole run.
+  Each result handed to a model is cut to 4,000 characters.
+
+Each run keeps what was called, with what arguments, what came back, and how it ended; the
+last 200 runs per routine are kept. **Alert** sends on your notification channels when a run
+fails, after every run, or never.
+
+Routines run in **nasquay-worker**. If the worker is stopped, a run stays queued until it
+starts again; a run that was going when NASQuay stopped is marked as interrupted.
+
+The NAS tools a model can call carry the argument descriptions the NAS gave at discovery.
+A NAS discovered before routines existed has none until you press **Discover tools** on it
+again under Settings → NAS.
+
+## The MCP endpoint
+
+Outside AI tools reach NASQuay at **`/mcp`** on its own address — streamable HTTP, with a
+personal API token as `Authorization: Bearer <token>`. It offers the same operations a
+routine can hold: the recorded data, every reviewed NAS tool, and notify. There is no other
+path to a NAS behind it.
+
+People make their own tokens on the **account panel** (their name, top right). Using the
+endpoint is its own permission, **`mcp.use`**; a role without it is refused however its
+tokens were made. Making tokens is `tokens.create`.
+
+What a token may do is its owner's role, narrowed by the token:
+
+- **Read only**, the default, is offered and allowed only operations that change nothing.
+- **Read and write** adds writes.
+- **Destructive** operations are refused unless the token allows them, and only an
+  administrator can make one that does.
+- The tool list shows only what the owner's role allows, and every call is checked again
+  regardless of what was listed.
+
+Tokens are stored as a SHA-256 hash and shown once. They expire after 30, 90 or 365 days, or
+never. An administrator sees every user's tokens on their own account panel and can revoke
+any of them. Revoking takes effect on the next call; disabling a user stops all of their
+tokens too.
+
+A request carrying an `Origin` header from any other site is refused, so a web page cannot
+spend a token somebody was tricked into pasting into it. MCP clients such as desktop AI
+tools send no `Origin` and are unaffected.
 
 ## SSH keys
 

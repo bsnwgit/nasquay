@@ -26,7 +26,10 @@ async def check(db: aiosqlite.Connection, caller: Caller, action_id: str) -> Dec
     # not quietly hand out a new power.
     if not action["reviewed"]:
         return Decision(False, "action not yet reviewed")
-    if caller.kind != "user" or caller.role_id is None:
+    # A routine carries its run-as user's role, and an API token its owner's, so each is
+    # checked exactly as that user would be; their own narrower limits are applied
+    # before they get here.
+    if caller.kind not in ("user", "routine", "api_token") or caller.role_id is None:
         return Decision(False, "caller has no role")
     if caller.is_admin:
         return Decision(True, "admin role")

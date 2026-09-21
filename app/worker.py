@@ -2,7 +2,7 @@
 The worker: `python -m app.worker`, one systemd service beside the web one.
 
 It runs what should not share a lifetime with a web server — today the monitoring
-schedule, later the jobs and routines. A collection walking a 28 TB share must not be
+schedule, the routines, and later the jobs. A collection walking a 28 TB share must not be
 interrupted because the interface was restarted to pick up a new page, and a web service
 must be free to restart for exactly that reason.
 
@@ -20,6 +20,7 @@ import signal
 from app.config import get_settings
 from app.database import connect
 from app.monitoring import scheduler
+from app.routines import scheduler as routine_scheduler
 from app.version import get_version
 
 log = logging.getLogger("nasquay.worker")
@@ -65,6 +66,7 @@ async def main() -> None:
 
     await _wait_for_schema()
     scheduler.start()
+    routine_scheduler.start()
     log.info("NASQuay worker %s started", get_version())
 
     # Wait for systemd to say stop, rather than spinning.
@@ -76,6 +78,7 @@ async def main() -> None:
 
     log.info("NASQuay worker stopping")
     await scheduler.stop()
+    await routine_scheduler.stop()
 
 
 if __name__ == "__main__":

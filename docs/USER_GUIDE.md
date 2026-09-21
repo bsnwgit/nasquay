@@ -161,6 +161,22 @@ own wording when one is not installed. It is read-only: starting a scan changes 
 
 ---
 
+## Using NASQuay from another AI tool
+
+Any AI tool that speaks MCP can use NASQuay, if your role includes it. Make a token under
+**API tokens** on your account panel, then point the tool at the address shown there —
+NASQuay's own address followed by `/mcp` — with the header `Authorization: Bearer <token>`,
+transport streamable HTTP.
+
+- The token acts as **you**, and can never do more than your role allows.
+- A **read only** token can look but change nothing. **Read and write** can change things.
+  Destructive actions are refused unless an administrator made the token to allow them.
+- The token is **shown once**. Copy it then; NASQuay keeps only a hash and cannot show it
+  again. If it is lost or may have leaked, revoke it — anything using it stops at once.
+- Every call is in the audit log under your name and the token's.
+
+---
+
 ## Things NASQuay will not do
 
 - **It never runs a free-form command.** SSH is limited to a fixed set of read-only

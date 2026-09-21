@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Help from "../components/Help";
+import ApiTokens from "../components/ApiTokens";
 import { api, type Session, type User } from "../api";
 
 // Opened from the signed-in user's name in the header, rather than living as its own tab.
@@ -88,6 +89,8 @@ export default function Account({
             Change password
           </button>
         </form>
+
+        <ApiTokens isAdmin={session.is_admin} />
 
         <button className="btn w-full" onClick={onSignOut}>
           Sign out

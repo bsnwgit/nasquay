@@ -7,6 +7,7 @@ unreviewed, which means nobody may run it — admin included — until it is cla
 """
 from __future__ import annotations
 
+import json
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -141,12 +142,19 @@ async def discover(
         # An existing action keeps its classification: a review decision is not undone by
         # rediscovery, and neither are the permissions hanging off it.
 
+        # The schema is kept so a routine can tell a model how to call the tool.
+        schema = tool.get("inputSchema")
         await db.execute(
-            """INSERT INTO nas_tools (nas_id, action_id, tool_name, available, last_seen)
-               VALUES (?, ?, ?, 1, datetime('now'))
+            """INSERT INTO nas_tools (nas_id, action_id, tool_name, available, last_seen,
+                                      input_schema, tool_description)
+               VALUES (?, ?, ?, 1, datetime('now'), ?, ?)
                ON CONFLICT(nas_id, action_id) DO UPDATE SET
-                   available = 1, tool_name = excluded.tool_name, last_seen = excluded.last_seen""",
-            (nas_id, action_id, name),
+                   available = 1, tool_name = excluded.tool_name, last_seen = excluded.last_seen,
+                   input_schema = excluded.input_schema,
+                   tool_description = excluded.tool_description""",
+            (nas_id, action_id, name,
+             json.dumps(schema if isinstance(schema, dict) else {})[:20_000],
+             str(tool.get("description") or "")[:2000]),
         )
 
     # Anything this NAS no longer offers stops being available, without losing its history.
