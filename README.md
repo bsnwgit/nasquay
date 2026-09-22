@@ -19,6 +19,17 @@ few readings it has no tool for. Nothing extra is installed on a NAS.
   there. Collection runs on its own schedule and builds a history; a NAS's own usage history
   can be imported so there is a baseline from the first day.
 - **Notifications** by email, ntfy push or Slack when a rule fires, and again when it clears.
+- **Routines** — scheduled work that runs as a chosen user with nobody watching: a fixed list
+  of steps, or a prompt handed to a model with the operations you allow it. Every call passes
+  the same gate and is recorded.
+- **Reports** — capacity, change, health and activity over a period, optionally compared with
+  the period before, readable on the page and downloadable as PDF or CSV, with an optional
+  AI-written summary that is always marked as one. Built from what was recorded, so producing
+  one never contacts a NAS.
+- **AI provider agnostic** — any OpenAI-compatible server (Ollama, LM Studio, vLLM, OpenAI) or
+  the Anthropic API, configured in the app and tested from it.
+- **An MCP endpoint** for AI tools outside NASQuay, reached with a personal API token that is
+  read-only unless you say otherwise, hashed at rest, expiring and revocable.
 - **Safe by default.** Destructive actions need confirmation from a person, and unattended
   callers cannot perform them unless explicitly allowed.
 - **Guides.** `docs/ADMIN_GUIDE.md` and `docs/USER_GUIDE.md`, and a help button on every page
@@ -27,7 +38,8 @@ few readings it has no tool for. Nothing extra is installed on a NAS.
 ## Requirements
 
 - A host running Ubuntu 22.04 or 24.04 LTS with Python 3.11+, systemd and Node 20+ for the
-  build.
+  build. Python dependencies are in `requirements.txt`; nothing needs system libraries beyond
+  a working Python.
 - One or more QNAP NAS units running QTS 5.2+ or QuTS hero h5.2+, with QNAP's **MCP Assistant**
   installed from App Center.
 - A token from MCP Assistant for each NAS, and optionally an SSH account on it.
@@ -42,7 +54,9 @@ bash install.sh
 
 The installer asks for the install directory, the listen address and port, and the first admin
 account. It creates the virtual environment, writes `config.yaml` with freshly generated keys,
-and installs the `nasquay-web` service.
+applies the database migrations, and installs two services: **`nasquay-web`** for the API and
+the interface, and **`nasquay-worker`** for the monitoring schedule, the routines and the
+reports. Without the worker, nothing runs on its own.
 
 Put a TLS reverse proxy in front of it before using it from other machines; the default listen
 address is `127.0.0.1`.
@@ -56,7 +70,12 @@ bash uninstall.sh --keep-data  # keeps config.yaml, the database, secrets and lo
 
 ## Documentation
 
+- `docs/ADMIN_GUIDE.md` — installing, connecting a NAS, roles, monitoring, routines, reports,
+  the assistant, the MCP endpoint and what to do when something is wrong.
+- `docs/USER_GUIDE.md` — using it: what each page shows and where its figures come from.
 - `docs/DESIGN.md` — what NASQuay is, how the permission gate works, and the decisions behind it.
+
+Every page also carries a help button explaining that page and the provenance of its figures.
 
 ## Licence
 

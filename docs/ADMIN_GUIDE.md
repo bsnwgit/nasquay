@@ -54,8 +54,16 @@ Deploy the new files and restart the service. Migrations apply themselves at sta
 order, each exactly once. `config.yaml`, the database, `secrets/` and `logs/` are never
 touched by an upgrade.
 
-Anything that changes Python code, adds a migration or adds an action needs a restart to
-take effect. Changes to the interface alone do not.
+**A release that adds a dependency needs it installed before the restart**, or the service
+will not start:
+
+```
+<install dir>/venv/bin/pip install -r requirements.txt
+```
+
+Anything that changes Python code, adds a migration or adds an action needs **both services**
+restarted — `nasquay-web` first, because it owns the schema, then `nasquay-worker`. Changes to
+the interface alone need neither.
 
 ---
 
@@ -138,6 +146,27 @@ included. NASQuay classifies them itself. **A tool NASQuay does not recognise ar
 unreviewed, and an unreviewed tool can be run by nobody, administrators included**, until
 somebody classifies it. Rediscovery never overwrites a review or the permissions hanging
 off it.
+
+---
+
+## The settings, in one place
+
+| Tab | What it holds |
+|---|---|
+| **General** | dashboard access, time zone, audit retention, folders hidden everywhere, report delivery and retention, and the Restart button |
+| **NAS** | the NAS units, their credentials and certificates, what each shows, and its tools |
+| **Monitoring** | the collection schedule, what is watched, and the client machines |
+| **Notifications** | email, ntfy and Slack |
+| **Routines** | scheduled work, fixed or AI-driven |
+| **Reports** | the four report kinds, their schedules and delivery |
+| **AI** | the embedded assistant, and the AI providers routines and summaries use |
+| **Certificates** | certificates NASQuay verifies a NAS or a provider against |
+| **SSH keys** | the keys NASQuay connects with |
+| **Users** and **Roles** | accounts, and the permission grid |
+| **Network** | where NASQuay listens |
+
+API tokens are not here: they belong to a person, so they are on the account panel behind
+your name at the top right.
 
 ---
 
@@ -488,7 +517,8 @@ a rule, and both say so on the page.
 What matters lives in the install directory and is never touched by an upgrade:
 
 - `config.yaml` — startup configuration
-- `data/nasquay.db` — users, roles, NAS units, targets, readings, flags, the audit log
+- `data/nasquay.db` — users, roles, NAS units, targets, readings, flags, routines and their
+  runs, reports and everything they produced, API tokens, and the audit log
 - `secrets/` — the encryption key and the SSH keys
 
 **Back up `secrets/` with the database.** Every stored token, password and webhook is
