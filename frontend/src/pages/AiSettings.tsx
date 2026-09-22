@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Help from "../components/Help";
 import AssistantSettings from "./AssistantSettings";
 import ProviderSettings from "./ProviderSettings";
 
@@ -36,7 +37,15 @@ export default function AiSettings() {
           </button>
         ))}
       </div>
-      <div className="text-xs text-zinc-300">{SAYS[tab]}</div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-zinc-300">{SAYS[tab]}</span>
+        <Help>
+          <p>NASQuay uses AI in two unrelated ways, and they are set up separately.</p>
+          <p>The <span className="text-zinc-200">assistant</span> is a chat panel from a resonance server, framed in NASQuay's own pages. Resonance chooses its model. Everything the panel asks for runs through the signed-in person's browser, as that person, so their role decides it and it lands in the audit log under their name.</p>
+          <p><span className="text-zinc-200">Providers</span> are models NASQuay calls itself, from the worker, with nobody signed in — for AI routines and for the written summary on a report. They are never used by the panel.</p>
+          <p>Neither is required. Routines with fixed steps and every report work with no AI configured at all.</p>
+        </Help>
+      </div>
       {tab === "Assistant" && <AssistantSettings />}
       {tab === "Providers" && <ProviderSettings />}
     </div>

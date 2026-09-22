@@ -30,7 +30,7 @@ Five groups along the top, each opening on an overview with its own list on the 
 |---|---|
 | **Home** | the NAS units NASQuay knows, when each was last checked, and a link to each one's own interface where an administrator has recorded it |
 | **Storage** | Overview, Pools, Shares, Files — an administrator can leave shares and folders out of these listings; the page says how many |
-| **Activity** | Dashboard, NAS, Clients, Logs, Audit |
+| **Activity** | Dashboard, NAS, Clients, Reports, Logs, Audit |
 | **System** | Overview, Accounts, System, Security |
 | **Settings** | configuration, for administrators |
 
@@ -177,6 +177,21 @@ Where a report carries a summary in words, it was written by a language model fr
 below it, and says so. The figures are the report.
 
 ---
+
+## The assistant
+
+Where an administrator has set one up, an assistant panel opens from the corner of the page.
+Ask it in words: which NAS units there are, how full a share is, what has been flagged, how a
+figure has moved, or what a report said.
+
+- It answers from **what NASQuay already recorded** and nothing else. It cannot contact a NAS,
+  so it can neither wake a box nor start a walk across a large share — and a figure it gives
+  you is as old as the reading behind it, which it will say.
+- Every call it makes runs **as you**, through the same permission check as the pages, and
+  lands in the audit log under your name. It can never read what you could not.
+- Names here are labels: a NAS called after an organisation is that NAS and nothing else. If
+  it answers about the wider world instead of looking something up, tell an administrator —
+  the model is the problem, not your question.
 
 ## Using NASQuay from another AI tool
 
