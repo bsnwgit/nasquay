@@ -1,8 +1,18 @@
 # NASQuay
 
-Self-hosted operation of QNAP NAS units: a web interface, scheduled routines and an MCP
-endpoint for AI tools — all behind one set of users, roles and per-action permissions, with
-every action recorded.
+**Self-hosted monitoring, automation and a web dashboard for QNAP NAS storage.** NASQuay
+watches your pools, volumes, shares and client mounts from several independent angles,
+raises a flag the moment something disagrees with what it should be, and keeps a history
+so a change can be recognised as a change rather than guessed at afterwards. A web
+interface, scheduled routines, generated reports and an MCP endpoint for AI tools all sit
+behind one set of users, roles and per-action permissions, with every action recorded.
+
+It runs entirely on your own hardware, talks to your NAS units directly, and sends nothing
+to any third party unless you configure an AI provider or notification channel yourself.
+
+> **Independent project.** NASQuay is not affiliated with, endorsed by or sponsored by
+> QNAP Systems, Inc. "QNAP" and "QTS" are trademarks of QNAP Systems, Inc. and are used
+> here only to describe compatibility.
 
 NASQuay drives QNAP's own MCP Assistant, which runs on each NAS, and uses SSH only for the
 few readings it has no tool for. Nothing extra is installed on a NAS.
@@ -83,3 +93,11 @@ PolyForm Noncommercial License 1.0.0 — see `LICENSE`. Any noncommercial purpos
 including personal use and use by charities, schools, public research and government bodies.
 
 Required Notice: Copyright Robert Barnett (https://pktSolution.com)
+
+## Disclaimer
+
+This is an independent, community project with no relationship to QNAP Systems, Inc. It is
+not affiliated with, endorsed by, sponsored by or in any way officially connected with QNAP,
+or with any of its subsidiaries or affiliates. "QNAP", "QTS", "QuTS hero" and any other QNAP
+product or service names are trademarks or registered trademarks of QNAP Systems, Inc. Any
+use of these names in this project is for identification and compatibility purposes only.
