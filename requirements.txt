@@ -16,3 +16,6 @@ aiosqlite>=0.20.0
 python-jose[cryptography]>=3.3.0   # JWT access and refresh tokens
 bcrypt>=4.1.0                      # Password hashing
 cryptography>=42.0.0               # Fernet encryption for secrets stored in the database
+
+# Reports
+reportlab>=4.1.0                   # PDF documents; pure Python, so the host needs no extra libraries

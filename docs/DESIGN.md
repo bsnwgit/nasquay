@@ -285,6 +285,37 @@ per condition. Clearings are sent too. Severity thresholds are settings, with wa
 default. The mail password, ntfy token and Slack webhook are encrypted at rest and never
 returned by the API.
 
+## Reporting (planned)
+
+Notifications say that something is wrong, now. A report says what has been happening —
+read when nobody is alarmed, and handed to somebody who was not watching.
+
+Nothing here is built yet. What is settled is the shape:
+
+- **Built from what is already recorded.** A report reads the readings, flags, runs and
+  audit log. It never contacts a NAS, so producing one is cheap, repeatable, and cannot
+  disturb a box.
+- **Report kinds**, each a template rather than a free-form query:
+  - *Capacity* — used, free and growth per pool, volume and share over a period, with the
+    rate of change and, where the trend supports it, how long until full.
+  - *Change* — what moved: shares that grew or shrank most, file counts that jumped, a
+    volume that lost data.
+  - *Health* — flags raised and cleared, degraded pools, disks, collection gaps.
+  - *Activity* — what NASQuay itself did: routines run, actions taken, by whom and through
+    what, drawn from the audit log.
+- **Run now or on a schedule**, the same schedule kinds routines use, as a chosen user, so
+  a report can never show what its reader's role may not see.
+- **Delivery**: on the page, downloadable, and optionally sent on the notification
+  channels. Kept for a retention period like the audit log.
+- **Format**: readable on the page; downloadable as CSV for the figures, and as a document
+  for the whole thing.
+- **An AI summary is optional and clearly marked**, written by a chosen provider over the
+  report's own figures, never instead of them. A report with no provider is still a report.
+
+Decided 2026-09-21 (**Decisions 13-15**): all four kinds are built, one after another;
+delivery — attachment, link, or both — is a setting; the document format is PDF; how long
+reports are kept is a setting.
+
 ## SSH keys
 
 NASQuay generates and names keys, and hands out only public halves. No private key is read,
@@ -337,6 +368,23 @@ A routine is a scheduled piece of work, created and edited on the settings page.
 - **Destructive actions** blocked unless the routine explicitly allows them (**Decision 11**).
 - Every run is recorded: start, end, status, each action called (also in the audit log), final
   output. Failures and flags raised can alert (**Decision 3**).
+
+### One surface for every caller
+
+**Decision 16 (2026-09-21):** anything NASQuay learns to do is offered to the embedded
+assistant and to the MCP endpoint as well as to the pages, unless there is a stated reason
+not to.
+
+In practice that is one catalogue, `app/routines/operations.py`, which routines and the MCP
+endpoint both read — an operation added there appears in both without further work. The
+assistant reads its own document (`/api/resonance/openapi.json`), so an operation meant for
+it is also a route in `app/api/resonance_data.py`; both call the same implementation, never
+a second copy of the logic. Reports follow this pattern: `app/reporting/surface.py` holds
+the reads, and the assistant's routes, the routine operations and the MCP tools are three
+ways into it.
+
+A deliberate exception stays deliberate: the assistant is offered nothing that contacts a
+NAS, so its answers cannot wake a box or start a walk across a large share.
 
 ## MCP endpoint
 
@@ -453,6 +501,7 @@ Each step is deployed to a test host and checked before it is committed.
 6. **AI providers and routines.**
 7. **MCP endpoint.**
 8. **Packaging** — installer hardening, admin and user guides.
+9. **Reporting** — capacity, change, health and activity reports, scheduled and delivered.
 
 A project website is a separate project.
 
@@ -488,5 +537,16 @@ Decided 2026-09-15:
     explicitly allowed.
 12. **Push:** ntfy first (self-hostable, phone apps); Pushover and browser notifications may be
     added later.
+
+Decided 2026-09-21:
+
+13. **Reporting:** all four kinds — capacity, change, health, activity — built one after
+    another.
+14. **Delivery and retention are settings:** a delivered report is sent as an attachment, as a
+    link back to NASQuay, or both; how long reports are kept is set beside it.
+15. **Documents are PDF**, rendered with ReportLab — pure Python, so the host needs no extra
+    system libraries. CSV stays the format for the figures alone.
+16. **One surface:** every new ability is offered to the assistant and the MCP endpoint as
+    well as the pages, through the shared catalogue, unless there is a stated reason not to.
 
 No design decisions are open.

@@ -31,6 +31,7 @@ from app.actions import audit, gate, runner
 from app.actions.context import Caller
 from app.actions.registry import DESTRUCTIVE, READ, WRITE
 from app.api import resonance_data as data
+from app.reporting import surface as reports
 from app.dependencies import ActionCall
 
 # What one call may hand back to a model. A listing of a large share is far longer, and
@@ -38,6 +39,7 @@ from app.dependencies import ActionCall
 MAX_RESULT_CHARS = 4000
 
 NOTIFY = "notify"
+PRODUCE_REPORT = "produceReport"
 
 
 @dataclass
@@ -125,6 +127,20 @@ DATA: dict[str, tuple[str, str, dict[str, Any], Handler]] = {
             metric=str(a.get("metric") or ""), days=_int(a, "days", 30, 1, 3650),
             limit=_int(a, "limit", data.DEFAULT_LIMIT, 1, data.MAX_LIMIT)),
     ),
+    "listReports": (
+        "reports.list",
+        "The reports set up here, what each is about, and when it was last produced.",
+        _object({}),
+        lambda db, call, a: reports.list_reports(db, call.caller,
+                                                 _int(a, "limit", 25, 1, 100)),
+    ),
+    "readReport": (
+        "reports.list",
+        "The figures of the newest successfully produced report of that name, with its "
+        "summary. Ask listReports first for the names.",
+        _object({"name": {"type": "string", "description": "The report's name"}}, ["name"]),
+        lambda db, call, a: reports.read_report(db, call.caller, str(a.get("name") or "")),
+    ),
     "getCollectionStatus": (
         "monitoring.read",
         "Whether the recorded figures are current, and how many flags are open.",
@@ -141,6 +157,13 @@ async def catalogue(db: aiosqlite.Connection) -> list[Operation]:
                   parameters=schema)
         for op_id, (action_id, desc, schema, _handler) in DATA.items()
     ]
+    ops.append(Operation(
+        id=PRODUCE_REPORT, action_id="reports.run", classification=WRITE,
+        description="Produce a report now. It is built from figures NASQuay already has, "
+                    "so it contacts no NAS. Read it with readReport a few seconds later.",
+        parameters=_object({"name": {"type": "string", "description": "The report's name"}},
+                           ["name"]),
+    ))
     ops.append(Operation(
         id=NOTIFY, action_id="notifications.send", classification=WRITE,
         description="Send a notification on the channels set up in NASQuay.",
@@ -240,11 +263,20 @@ async def call(
             await action.failed(said[:200], params=params)
         return ok, said
 
+    if op.id == PRODUCE_REPORT:
+        answer = await reports.produce_report(db, caller, str(arguments.get("name") or ""))
+        await action.done(params=params, detail=str(answer.get("detail", ""))[:200])
+        return bool(answer.get("queued")), json.dumps(answer)
+
     _action_id, _desc, _schema, handler = DATA[op.id]
     try:
-        # The handler is the assistant's own route function, which records done() itself.
+        # The handler is the assistant's own route function, which records done() itself,
+        # or one of the report reads, which return plain dictionaries.
         answer = await handler(db, action, arguments)
     except HTTPException as exc:
         await action.failed(str(exc.detail), params=params)
         return False, f"failed: {exc.detail}"
+    if isinstance(answer, dict):
+        await action.done(params=params, detail="read")
+        return True, _clip(json.dumps(answer))
     return True, _clip(answer.model_dump_json())

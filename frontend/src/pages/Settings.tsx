@@ -9,7 +9,9 @@ import CertSettings from "./CertSettings";
 import NotificationSettings from "./NotificationSettings";
 import AiSettings from "./AiSettings";
 import RoutineSettings from "./RoutineSettings";
+import Reports from "./Reports";
 import Help from "../components/Help";
+import Confirm from "../components/Confirm";
 
 // One settings section with tabs down the side, the way the suite's other apps do it.
 // Tools are not a tab: they belong to a NAS, so they live inside its row.
@@ -27,7 +29,7 @@ const ZONES: string[] = (() => {
           "America/Los_Angeles", "Europe/London", "Europe/Paris", "Australia/Sydney"];
 })();
 
-const TABS = ["General", "NAS", "Monitoring", "Notifications", "Routines", "AI", "Certificates", "SSH keys", "Users", "Roles", "Network"] as const;
+const TABS = ["General", "NAS", "Monitoring", "Notifications", "Routines", "Reports", "AI", "Certificates", "SSH keys", "Users", "Roles", "Network"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Settings() {
@@ -58,6 +60,7 @@ export default function Settings() {
         {tab === "Monitoring" && <MonitoringSettings />}
         {tab === "Notifications" && <NotificationSettings />}
         {tab === "Routines" && <RoutineSettings />}
+        {tab === "Reports" && <Reports manage />}
         {tab === "AI" && <AiSettings />}
         {tab === "Certificates" && <CertSettings />}
         {tab === "SSH keys" && <KeysSettings />}
@@ -74,6 +77,7 @@ function General() {
   const [network, setNetwork] = useState<Network | null>(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     api.settings
@@ -86,8 +90,7 @@ function General() {
   }, []);
 
   const restart = async () => {
-    if (!window.confirm("Restart NASQuay now? Everyone using it is disconnected briefly."))
-      return;
+    setConfirming(false);
     setError("");
     setNote("");
     try {
@@ -181,6 +184,56 @@ function General() {
 
         <label className="block space-y-1">
           <span className="text-xs uppercase tracking-wide text-zinc-300">
+            Delivered reports carry
+          </span>
+          <select
+            className="field"
+            value={String(values.report_delivery ?? "both")}
+            onChange={(e) => save({ report_delivery: e.target.value })}
+          >
+            <option value="attachment">the document</option>
+            <option value="link">a link back to NASQuay</option>
+            <option value="both">both</option>
+          </select>
+          <span className="block text-xs text-zinc-300">
+            Only email can carry an attachment; a push always sends the text.
+          </span>
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-300">
+            Address NASQuay is reached at
+          </span>
+          <input
+            className="field font-mono text-xs"
+            placeholder="https://nasquay.example.com"
+            key={String(values.report_link_base ?? "")}
+            defaultValue={String(values.report_link_base ?? "")}
+            onBlur={(e) => save({ report_link_base: e.target.value })}
+          />
+          <span className="block text-xs text-zinc-300">
+            For the links in a delivered report. NASQuay cannot know this itself — it sees
+            whatever address a proxy hands it.
+          </span>
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-300">
+            Report retention (days)
+          </span>
+          <input
+            className="field"
+            type="number"
+            min={7}
+            max={3650}
+            key={String(values.report_retention_days ?? "")}
+            defaultValue={Number(values.report_retention_days ?? 365)}
+            onBlur={(e) => save({ report_retention_days: Number(e.target.value) })}
+          />
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-300">
             Folders hidden everywhere
           </span>
           <input
@@ -217,9 +270,25 @@ function General() {
           NASQuay stops and its service manager starts it again, so settings that are read at
           startup take effect.
         </div>
-        <button className="btn" onClick={restart}>
+        <button className="btn-danger" onClick={() => setConfirming(true)}>
           Restart NASQuay
         </button>
+
+        {confirming && (
+          <Confirm
+            title="Restart NASQuay now?"
+            danger="Everyone using it is disconnected, and anything running — a collection, a routine, a report — is stopped where it is."
+            detail={
+              network?.restart_required
+                ? `It will come back on ${network.host}:${network.port}, which is not the address you are using now.`
+                : "It comes back in a few seconds. Reload the page then."
+            }
+            confirmLabel="Restart NASQuay"
+            busyLabel="Restarting…"
+            onConfirm={restart}
+            onCancel={() => setConfirming(false)}
+          />
+        )}
       </div>
     </div>
   );

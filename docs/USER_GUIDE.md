@@ -161,6 +161,23 @@ own wording when one is not installed. It is read-only: starting a scan changes 
 
 ---
 
+## Reports
+
+**Activity → Reports.** A report says what has been happening — how full things are getting,
+what moved, what was flagged, what NASQuay did — over a period an administrator chose.
+
+Press **Produce now** for a fresh one, **Read** to open it, or **PDF** / **CSV** to download
+it. Nothing here contacts a NAS: every figure was recorded earlier, so a report costs the NAS
+nothing however often it is produced.
+
+A report runs as a chosen user and shows only what that user's role may see. You can read one
+only if you could have run it as that user.
+
+Where a report carries a summary in words, it was written by a language model from the figures
+below it, and says so. The figures are the report.
+
+---
+
 ## Using NASQuay from another AI tool
 
 Any AI tool that speaks MCP can use NASQuay, if your role includes it. Make a token under

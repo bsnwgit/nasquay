@@ -50,6 +50,12 @@ export default function ClientSettings() {
     name: "", address: "", ssh_user: "", ssh_port: 22, key_name: "",
   });
   const [mount, setMount] = useState({ share: "", path: "" });
+  // "Use this" opens a row of its own under the mount it was pressed on, so the choice
+  // and the button are where the eye already is.
+  const [inline, setInline] = useState<
+    { client_id: number; path: string; share: string; detected: boolean; choosing: boolean }
+    | null
+  >(null);
   // What is mounted on a client right now, per client, once asked for.
   const [present, setPresent] = useState<
     Record<number, { source: string; path: string; type: string; watched: boolean }[]>
@@ -297,41 +303,137 @@ export default function ClientSettings() {
                 </div>
               )}
 
-              {(present[client.id] ?? []).map((one) => (
-                <div
-                  key={one.path}
-                  className="grid grid-cols-[1fr_5rem_1fr_6rem] items-center gap-3 text-xs
-                             py-1 border-b border-zinc-600/60 last:border-0"
-                >
-                  <span className="text-zinc-200 truncate" title={one.path}>
-                    {one.path}
-                  </span>
-                  <span className="text-zinc-300">{one.type}</span>
-                  <span className="text-zinc-300 truncate" title={one.source}>
-                    {one.source}
-                  </span>
-                  {one.watched ? (
-                    <span className="text-emerald-400 text-right">watched</span>
-                  ) : (
-                    <button
-                      className="btn"
-                      onClick={() => {
-                        // The share is usually the last part of what it was mounted from.
-                        const guess = one.source.split(/[:/\\]/).filter(Boolean).pop() ?? "";
-                        const match = targets.find(
-                          (t) => t.kind === "share" && t.ref.toLowerCase() === guess.toLowerCase(),
-                        );
-                        setMount({
-                          path: one.path,
-                          share: match ? `${match.nas_id}:${match.ref}` : "",
-                        });
-                      }}
-                    >
-                      Use this
-                    </button>
-                  )}
+              {/* One a share is watched it belongs under Watched, so it leaves this list
+                  rather than sitting here as a row nothing can be done with. */}
+              {(present[client.id] ?? []).filter((one) => one.watched).length > 0 && (
+                <div className="text-xs text-zinc-300">
+                  {(present[client.id] ?? []).filter((one) => one.watched).length} already watched,
+                  below.
                 </div>
-              ))}
+              )}
+
+              {(present[client.id] ?? []).filter((one) => !one.watched).map((one) => {
+                const open = inline?.client_id === client.id && inline.path === one.path;
+                return (
+                  <div key={one.path} className="border-b border-zinc-600/60 last:border-0 py-1">
+                    <div className="grid grid-cols-[1fr_5rem_1fr_6rem] items-center gap-3 text-xs">
+                      <span className="text-zinc-200 truncate" title={one.path}>
+                        {one.path}
+                      </span>
+                      <span className="text-zinc-300">{one.type}</span>
+                      <span className="text-zinc-300 truncate" title={one.source}>
+                        {one.source}
+                      </span>
+                      <button
+                          className="btn"
+                          onClick={() => {
+                            if (open) {
+                              setInline(null);
+                              return;
+                            }
+                            // The share is usually the last part of what it was mounted from.
+                            const guess = one.source.split(/[:/\\]/).filter(Boolean).pop() ?? "";
+                            const match = targets.find(
+                              (t) => t.kind === "share" && t.ref.toLowerCase() === guess.toLowerCase(),
+                            );
+                            // Opened here rather than filling the form at the foot of the
+                            // panel: that is off screen from this button, and pressing it
+                            // looked like nothing happening at all.
+                            setInline({
+                              client_id: client.id,
+                              path: one.path,
+                              share: match ? `${match.nas_id}:${match.ref}` : "",
+                              detected: Boolean(match),
+                              choosing: !match,
+                            });
+                          }}
+                        >
+                          {open ? "Cancel" : "Use this"}
+                        </button>
+                    </div>
+
+                    {open && (
+                      <div className="mt-2 mb-1 border border-amber-500/40 bg-zinc-900/40 p-2
+                                      grid md:grid-cols-[1fr_auto] gap-3 items-end">
+                        {/* A mount names what it came from, so when that matches a known
+                            share there is nothing to choose: it is stated, and the whole
+                            list is only offered when the match was wrong or absent. */}
+                        {inline.detected && !inline.choosing ? (
+                          <div className="space-y-1">
+                            <span className="block text-xs text-zinc-300">
+                              {one.path} is
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-zinc-100">
+                                {units.find(
+                                  (n) => n.id === Number(inline.share.split(":")[0]),
+                                )?.name}{" "}
+                                · {inline.share.split(":")[1]}
+                              </span>
+                              <span className="text-xs text-zinc-300">
+                                read from {one.source}
+                              </span>
+                              <button
+                                className="btn"
+                                onClick={() => setInline({ ...inline, choosing: true })}
+                              >
+                                Not this one
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="space-y-1">
+                            <span className="text-xs text-zinc-300">
+                              Which share {one.path} is
+                              {inline.detected
+                                ? ""
+                                : " — nothing here matched its name, so choose it"}
+                            </span>
+                            <select
+                              className="field"
+                              value={inline.share}
+                              onChange={(e) => setInline({ ...inline, share: e.target.value })}
+                            >
+                              <option value="">choose</option>
+                              {shares.map((share) => (
+                                <option key={share.id} value={`${share.nas_id}:${share.ref}`}>
+                                  {units.find((n) => n.id === share.nas_id)?.name} · {share.ref}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                        <button
+                          className="btn-primary"
+                          disabled={!inline.share}
+                          onClick={() =>
+                            act(async () => {
+                              const [nasId, share] = inline.share.split(":");
+                              await api.clients.addMount({
+                                client_id: client.id,
+                                nas_id: Number(nasId),
+                                share,
+                                path: one.path,
+                              });
+                              setInline(null);
+                              // Marked here as well as reloaded, because what is mounted
+                              // was read from the machine and is not re-read by a save.
+                              setPresent((was) => ({
+                                ...was,
+                                [client.id]: (was[client.id] ?? []).map((row) =>
+                                  row.path === one.path ? { ...row, watched: true } : row,
+                                ),
+                              }));
+                            }, `Watching ${one.path} — switch it on under Watched`)
+                          }
+                        >
+                          Watch this mount
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="border border-amber-500/30 bg-zinc-900/40 p-3 space-y-2">

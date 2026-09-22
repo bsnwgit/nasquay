@@ -35,7 +35,7 @@ migrations and installs two systemd units:
 
 - **`nasquay-web`** — the API and the interface. It owns the database schema: migrations run
   when it starts.
-- **`nasquay-worker`** — the monitoring schedule and the routines. It is a
+- **`nasquay-worker`** — the monitoring schedule, the routines and the reports. It is a
   process of its own so that a collection walking a large share is not cut short every time
   the interface is restarted, and it applies no migrations: it waits for the web service to
   have the schema ready.
@@ -271,6 +271,45 @@ starts again; a run that was going when NASQuay stopped is marked as interrupted
 The NAS tools a model can call carry the argument descriptions the NAS gave at discovery.
 A NAS discovered before routines existed has none until you press **Discover tools** on it
 again under Settings → NAS.
+
+## Reports
+
+**Settings → Reports** defines them; **Activity → Reports** is where they are read.
+
+A report says what has been happening, where a flag says something is wrong now. Every
+figure comes from what NASQuay already recorded, so producing one never contacts a NAS and
+can be repeated as often as you like.
+
+Four kinds:
+
+- **Capacity** — how full every pool, volume and share is, how much it grew over the
+  period, how much per day, and how long until it is full.
+- **Change** — what moved: the largest changes, anything that shrank, and file counts.
+- **Health** — flags raised and cleared, pool states, client mounts, and whether collection
+  itself kept up.
+- **Activity** — what NASQuay did and who asked, from the audit log: actions, refusals and
+  routine runs.
+
+**A report runs as a user** and shows only what that user's role may see — a capacity,
+change or health report needs `monitoring.read`, an activity report needs `audit.read`. As
+with routines, you may only choose yourself or a user whose role you could hand out, and the
+same check covers editing, running, deleting and reading what a report produced.
+
+**Schedules** work exactly as a routine's: by hand, every N minutes, daily, or weekly, in the
+installation's time zone. Reports run in **nasquay-worker**.
+
+Each produced report is readable on the page and downloadable as **PDF** or **CSV**. **Send
+it when it is produced** puts it on the notification channels; whether that carries the
+document, a link back to NASQuay, or both is **Settings → General**, along with the link
+address and how long reports are kept. Only email can carry an attachment — a push always
+sends the text.
+
+**An AI summary is optional**, written by a chosen provider from the report's own figures and
+marked as such wherever it appears. A summary that fails costs nothing: the figures are the
+report, and they are produced either way.
+
+A figure NASQuay does not have is shown as an em dash, never as zero — a share nobody has
+measured and a share that is empty are different answers.
 
 ## The MCP endpoint
 
