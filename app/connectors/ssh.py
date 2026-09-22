@@ -158,10 +158,12 @@ def client_view(target: Target, path: str) -> dict[str, int]:
     a path that is not mounted quietly answers about the filesystem underneath it, so a
     share that has dropped would report the client's own disk and look healthy.
     """
-    quoted = shlex.quote(check_mount_path(path))
+    checked = check_mount_path(path)
+    quoted = shlex.quote(checked)
+    marker = shlex.quote(f" on {checked} ")
     out = _run(
         target,
-        f"mount | grep -c -F ' on {check_mount_path(path)} '; df -k {quoted} 2>/dev/null | tail -1",
+        f"mount | grep -c -F {marker}; df -k {quoted} 2>/dev/null | tail -1",
     )
     lines = [line for line in out.splitlines() if line.strip()]
     if not lines:
