@@ -45,6 +45,9 @@ class Message:
     body: str
     # error | warning | info — decides the push priority and the subject's prefix.
     severity: str = "warning"
+    # A document to attach, for the channels that can carry one — email only. The others
+    # send the body alone rather than refusing.
+    attachment: Optional[tuple[str, bytes, str]] = None   # filename, content, media type
 
 
 def _priority(severity: str) -> str:
@@ -62,6 +65,11 @@ def send_email(settings: dict[str, Any], message: Message) -> str:
     note["From"] = settings.get("mail_from") or settings.get("smtp_user") or "nasquay"
     note["To"] = ", ".join(recipients)
     note.set_content(message.body)
+    if message.attachment:
+        name, content, media = message.attachment
+        kind, _, subtype = media.partition("/")
+        note.add_attachment(content, maintype=kind or "application",
+                            subtype=subtype or "octet-stream", filename=name)
 
     port = int(settings.get("smtp_port") or 587)
     security = settings.get("smtp_security") or "starttls"

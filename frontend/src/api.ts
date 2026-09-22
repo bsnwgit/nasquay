@@ -307,6 +307,69 @@ export type RoutineRun = {
   alert: string;
 };
 
+export type ReportSection = {
+  heading: string;
+  note: string;
+  columns: string[];
+  rows: (string | number)[][];
+};
+
+export type ReportFigures = {
+  title: string;
+  kind: string;
+  nas: string;
+  period: { days: number };
+  generated_at: string;
+  sections: ReportSection[];
+  summary: string;
+};
+
+export type Report = {
+  id: number;
+  name: string;
+  description: string;
+  kind: "capacity" | "change" | "health" | "activity";
+  enabled: boolean;
+  period_days: number;
+  nas_id: number | null;
+  nas_name: string | null;
+  schedule_kind: "manual" | "interval" | "daily" | "weekly";
+  interval_minutes: number;
+  at_time: string;
+  weekday: number;
+  run_as_user_id: number | null;
+  run_as_username: string | null;
+  deliver: boolean;
+  ai_summary: boolean;
+  compare: boolean;
+  provider_id: number | null;
+  provider_name: string | null;
+  created_at: string;
+  updated_at: string | null;
+  last_status: string | null;
+  last_finished_at: string | null;
+  last_error: string | null;
+  last_ok_run: number | null;
+};
+
+export type ReportKind = { kind: string; title: string; description: string };
+
+export type ReportRun = {
+  id: number;
+  report_id: number;
+  report_name: string;
+  kind: string;
+  trigger: string;
+  status: string;
+  queued_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  summary: string;
+  error: string;
+  delivered: string;
+  figures: ReportFigures | null;
+};
+
 export type ApiToken = {
   id: number;
   user_id: number;
@@ -686,6 +749,44 @@ export const api = {
         `/api/providers/${id}/test`,
         { method: "POST" },
       ),
+  },
+
+  reports: {
+    list: () => request<Report[]>("/api/reports"),
+    kinds: () => request<ReportKind[]>("/api/reports/kinds"),
+    runs: (reportId?: number) =>
+      request<ReportRun[]>(
+        `/api/reports/runs${reportId ? `?report_id=${reportId}` : ""}`,
+      ),
+    read: (runId: number) => request<ReportRun>(`/api/reports/runs/${runId}`),
+    create: (body: Record<string, unknown>) =>
+      request<Report>("/api/reports", { method: "POST", body }),
+    update: (id: number, body: Record<string, unknown>) =>
+      request<Report>(`/api/reports/${id}`, { method: "PATCH", body }),
+    remove: (id: number) => request<void>(`/api/reports/${id}`, { method: "DELETE" }),
+    run: (id: number) =>
+      request<{ run_id: number }>(`/api/reports/${id}/run`, { method: "POST" }),
+    // A download carries the access token in a header, so it cannot be a plain link:
+    // the file is fetched, then handed to the browser to save.
+    download: async (runId: number, format: "pdf" | "csv") => {
+      const response = await fetch(`/api/reports/runs/${runId}/document?format=${format}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "same-origin",
+      });
+      if (!response.ok) throw new ApiError(response.status, response.statusText);
+      const blob = await response.blob();
+      const name =
+        /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ??
+        `report-${runId}.${format}`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
   },
 
   tokens: {

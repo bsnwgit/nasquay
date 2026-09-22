@@ -16,6 +16,7 @@ import ClientMonitoring from "./pages/ClientMonitoring";
 import StorageOverview from "./pages/StorageOverview";
 import SystemOverview from "./pages/SystemOverview";
 import Audit from "./pages/Audit";
+import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import { LogoMark } from "./components/Logo";
@@ -26,14 +27,15 @@ import { setTimezone } from "./utils/format";
 const GROUPS = [
   { name: "Home", pages: ["Home"] },
   { name: "Storage", pages: ["StorageOverview", "Storage", "Shares", "Files"] },
-  { name: "Activity", pages: ["Dashboard", "Monitoring", "ClientMonitoring", "Logs", "Audit"] },
+  { name: "Activity", pages: ["Dashboard", "Monitoring", "ClientMonitoring", "Reports", "Logs", "Audit"] },
   { name: "System", pages: ["SystemOverview", "Accounts", "System", "Security"] },
   { name: "Settings", pages: ["Settings"] },
 ] as const;
 
 type Page =
   | "Home" | "StorageOverview" | "Storage" | "Shares" | "Files"
-  | "Dashboard" | "Monitoring" | "ClientMonitoring" | "Logs" | "Audit" | "SystemOverview"
+  | "Dashboard" | "Monitoring" | "ClientMonitoring" | "Reports" | "Logs" | "Audit"
+  | "SystemOverview"
   | "Accounts" | "System" | "Security" | "Settings";
 
 // A sub-tab's label is not always its page name: "Storage > Storage" said nothing.
@@ -118,6 +120,8 @@ export default function App() {
         return <Monitoring />;
       case "ClientMonitoring":
         return <ClientMonitoring />;
+      case "Reports":
+        return <Reports />;
       case "Audit":
         return <Audit />;
       case "Settings":

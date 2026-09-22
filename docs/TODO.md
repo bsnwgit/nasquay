@@ -20,5 +20,18 @@ belong in `DESIGN.md`.
 
 ## Next
 
-`DESIGN.md`'s sections 7 (routines) to 10 — routines, the MCP endpoint, packaging, and
-the website. AI providers, the first half of section 7, are built.
+Built: routines, AI providers, the MCP endpoint, and reporting (all four kinds, compare,
+PDF and CSV, delivery, retention, and the report operations on the assistant and MCP).
+
+Untested in reporting: scheduled runs, delivery on every channel, the AI summary, and
+retention pruning.
+
+Known gaps:
+
+- A delivered report's link points at `<address>/reports/<run id>`, which the interface
+  does not yet open on that report — it lands on the page instead.
+- The AI summary's prompt is fixed; it cannot be edited per report.
+- Nothing charts anything: PDFs are tables.
+
+What is left of the plan: packaging for any Ubuntu host, and the NASQuay.com website as
+its own project.

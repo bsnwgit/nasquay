@@ -55,6 +55,15 @@ def _name_list(value: Any) -> list[str]:
     return list(seen.values())
 
 
+def _text(low: int, high: int) -> Validator:
+    def check(value: Any) -> str:
+        text = str(value or "").strip()
+        if not low <= len(text) <= high:
+            raise ValueError(f"must be from {low} to {high} characters")
+        return text
+    return check
+
+
 def _int_between(low: int, high: int) -> Validator:
     def check(value: Any) -> Any:
         if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
@@ -99,6 +108,15 @@ SCHEMA: dict[str, tuple[Any, Validator]] = {
     # never what anyone opened the Files page to look at. Hiding one share or one folder
     # is a per-NAS setting instead; this is the list that would otherwise be repeated in
     # every share on every box. Presentation only — nothing here affects access.
+    # Reporting. A delivered report can carry the document, a link back to NASQuay, or
+    # both — an installation reachable only from inside will want the attachment, one
+    # whose mail leaves the building may prefer the link.
+    "report_delivery":        ("both", _choice("attachment", "link", "both")),
+    # Where this installation is reached from a browser, for the links in a delivered
+    # report. NASQuay cannot know this itself: it sees whatever address a proxy gives it.
+    "report_link_base":       ("",    _text(0, 255)),
+    "report_retention_days":  (365,    _int_between(7, 3650)),
+
     "files_hidden_names": (
         ["@Recycle", ".@__thumb", "@Recently-Snapshot", "@Transcode", ".@upload_cache"],
         _name_list,

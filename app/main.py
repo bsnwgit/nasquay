@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.actions.registry import sync_actions
 from app.monitoring import scheduler
+from app.reporting import scheduler as report_scheduler
 from app.routines import scheduler as routine_scheduler
 from app import settings_store
 from app.config import get_settings
@@ -32,6 +33,7 @@ from app.api import providers as providers_router
 from app.api import nas      as nas_router
 from app.api import resonance as resonance_router
 from app.api import resonance_data as resonance_data_router
+from app.api import reports as reports_router
 from app.api import routines as routines_router
 from app.api import mcp as mcp_router
 from app.api import tokens as tokens_router
@@ -62,6 +64,7 @@ async def lifespan(app: FastAPI):
     if get_settings().collection_in_web:
         scheduler.start()
         routine_scheduler.start()
+        report_scheduler.start()
         log.info("Collection and routines run in the web process (collection_in_web is set)")
     else:
         log.info("Collection and routines are left to nasquay-worker")
@@ -71,6 +74,7 @@ async def lifespan(app: FastAPI):
 
     await scheduler.stop()
     await routine_scheduler.stop()
+    await report_scheduler.stop()
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     log.info("NASQuay shutting down")
@@ -103,6 +107,7 @@ app.include_router(certificates_router.router, prefix="/api/certificates", tags=
 app.include_router(notifications_router.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(providers_router.router, prefix="/api/providers", tags=["providers"])
 app.include_router(routines_router.router, prefix="/api/routines", tags=["routines"])
+app.include_router(reports_router.router,  prefix="/api/reports",  tags=["reports"])
 app.include_router(tokens_router.router,   prefix="/api/tokens",   tags=["tokens"])
 # MCP clients are configured with a URL, and /mcp is the one they expect.
 app.include_router(mcp_router.router, tags=["mcp"])

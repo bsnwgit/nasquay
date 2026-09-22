@@ -34,6 +34,7 @@ from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel, Field
 
 from app.dependencies import ActionCall, DbDep, require
+from app.reporting import surface as reports_surface
 from app.version import get_version
 
 router = APIRouter()
@@ -313,6 +314,38 @@ async def read_history(
     )
 
 
+@router.get("/api/resonance/data/reports", operation_id="listReports",
+            summary="The reports set up here, and when each was last produced")
+async def list_reports(
+    db: DbDep, call: Annotated[ActionCall, Depends(require("reports.list"))],
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+):
+    """What this installation reports on: capacity, change, health and activity, over a
+    period somebody chose. Ask before readReport, which needs a name from here.
+
+    Only reports this person could have produced themselves are listed.
+    """
+    answer = await reports_surface.list_reports(db, call.caller, limit)
+    await call.done(detail=f"assistant: {answer['total']} reports")
+    return answer
+
+
+@router.get("/api/resonance/data/reports/read", operation_id="readReport",
+            summary="Read the newest report of that name")
+async def read_report(
+    db: DbDep, call: Annotated[ActionCall, Depends(require("reports.list"))],
+    name: str = Query(..., description="The report's name, exactly as listReports gives it"),
+):
+    """The figures of the newest report of that name that was produced, with its summary.
+
+    Reports are built from figures NASQuay already recorded, so what comes back is as old
+    as the report says it is — `produced_at` is part of the answer for that reason.
+    """
+    answer = await reports_surface.read_report(db, call.caller, name)
+    await call.done(detail=f"assistant: report {name}"[:200])
+    return answer
+
+
 @router.get("/api/resonance/data/collection", response_model=CollectionOut,
             operation_id="getCollectionStatus")
 async def collection_status(
@@ -356,6 +389,7 @@ async def collection_status(
 # Named by operationId, which is the only identifier stable enough to grant against: a
 # path gets rewritten by a refactor and the grant would silently withdraw itself.
 GRANTED = ("listNasUnits", "listMeasurements", "listFlags", "readHistory",
+           "listReports", "readReport",
            "getCollectionStatus")
 
 
